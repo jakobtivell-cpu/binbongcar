@@ -153,15 +153,62 @@
       border:1px dashed #e3e4e8;
       pointer-events:none;
     }
+
+    /* START BUTTON CENTER */
     .ring-center{
-      position:absolute; inset:28%;
+      position:absolute;
+      inset:30%;
       border-radius:999px;
-      background:#fff;
-      border:1px solid var(--ring-line);
-      display:grid; place-items:center; text-align:center; padding:18px;
-      color:var(--muted);
-      font-size:13px;
+      display:grid;
+      place-items:center;
+      text-align:center;
+      padding:18px;
+
+      background:
+        radial-gradient(circle at 30% 25%, #ffffff 0%, #f3f4f6 35%, #d9dbe0 70%, #c9ccd3 100%);
+      border:1px solid #cfd2d9;
+      box-shadow:
+        inset 0 10px 18px rgba(255,255,255,.9),
+        inset 0 -10px 18px rgba(0,0,0,.08),
+        0 18px 50px rgba(16,18,25,.12);
+
+      color:#111;
+      font-size:12px;
+      letter-spacing:.6px;
+      text-transform:uppercase;
     }
+    .ring-center .start-cap{
+      width:72%;
+      height:72%;
+      border-radius:999px;
+      display:grid;
+      place-items:center;
+      background:
+        radial-gradient(circle at 35% 30%, #ffe2b6 0%, #f3a74f 45%, #d57b1f 70%, #b85f12 100%);
+      border:1px solid rgba(0,0,0,.12);
+      box-shadow:
+        inset 0 8px 14px rgba(255,255,255,.35),
+        inset 0 -10px 16px rgba(0,0,0,.25),
+        0 8px 18px rgba(0,0,0,.12);
+    }
+    .ring-center .start-text{
+      font-weight:900;
+      font-size:18px;
+      letter-spacing:1px;
+    }
+    .ring-center .engine-text{
+      font-weight:700;
+      font-size:10px;
+      opacity:.9;
+      margin:4px 0;
+    }
+    .ring-center .stop-text{
+      font-weight:900;
+      font-size:14px;
+      letter-spacing:1px;
+      margin-top:2px;
+    }
+
     .slot{
       position:absolute;
       width:94px; height:60px;
@@ -251,7 +298,7 @@
       padding:3px 7px;
       border-radius:999px;
       font-weight:800;
-      letter-spacing:.4px;
+      letter-spacing:.3px;
       display:inline-block;
       margin-right:4px;
       margin-top:2px;
@@ -373,12 +420,14 @@
 
     <div class="ring-stage">
       <div class="ring" id="ring">
-        <div class="ring-center">
-          <div style="font-weight:800;color:var(--ink);font-size:14px;margin-bottom:4px;">
-            Egaux Pricing Toolkit
+        <div class="ring-center" aria-hidden="true">
+          <div class="start-cap">
+            <div>
+              <div class="start-text">Start</div>
+              <div class="engine-text">Engine</div>
+              <div class="stop-text">Stop</div>
+            </div>
           </div>
-          Your comparison selection.<br/>
-          Drag a model into the ring.
         </div>
         <!-- slots injected here -->
       </div>
@@ -468,7 +517,9 @@ const SEGMENTS = [
   }
 ];
 
-const ALL_CARS = SEGMENTS.flatMap(s => s.cars.map(c => ({...c, segment:s.id, segmentName:s.name})));
+const ALL_CARS = SEGMENTS.flatMap(s =>
+  s.cars.map(c => ({...c, segment:s.id, segmentName:s.name}))
+);
 
 /* ------------------ State ------------------ */
 const state = {
@@ -503,7 +554,6 @@ function getFilteredCars(){
 function renderSegments(){
   segmentsEl.innerHTML = "";
 
-  // "All" button
   const allBtn = document.createElement("button");
   allBtn.className = "seg-btn" + (state.filters.segment==="all" ? " active":"");
   allBtn.innerHTML = `<span>All segments</span><small>${ALL_CARS.length} models</small>`;
@@ -513,8 +563,7 @@ function renderSegments(){
   SEGMENTS.forEach(seg=>{
     const btn = document.createElement("button");
     btn.className = "seg-btn" + (state.filters.segment===seg.id ? " active":"");
-    const count = seg.cars.length;
-    btn.innerHTML = `<span>${seg.name}</span><small>${count} models</small>`;
+    btn.innerHTML = `<span>${seg.name}</span><small>${seg.cars.length} models</small>`;
     btn.onclick = ()=>{ state.filters.segment=seg.id; update(); };
     segmentsEl.appendChild(btn);
   });
@@ -523,7 +572,6 @@ function renderSegments(){
 /* ------------------ Render car list ------------------ */
 function renderCars(){
   carGridEl.innerHTML = "";
-
   const cars = getFilteredCars();
   visibleCountEl.textContent = `${cars.length} shown`;
 
@@ -566,6 +614,7 @@ function createSlots(){
     const angle = (i/slotCount)*Math.PI*2 - Math.PI/2;
     const x = center + radius*Math.cos(angle) - 47;
     const y = center + radius*Math.sin(angle) - 30;
+
     const slot = document.createElement("div");
     slot.className = "slot";
     slot.style.left = x+"px";
@@ -664,6 +713,7 @@ fuelFilterEl.addEventListener("change", e=>{
   state.filters.fuel = e.target.value;
   update();
 });
+
 document.getElementById("clearFilters").onclick = ()=>{
   state.filters.segment="all";
   state.filters.vclass="all";

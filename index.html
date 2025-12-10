@@ -11,8 +11,6 @@
       --panel-2:#fafafa;
       --ink: #0b0c0f;
       --muted:#6f7685;
-      --accent:#111111;      /* luxury = restraint */
-      --accent-2:#3a3a3a;
       --danger:#111111;
       --ring:#ffffff;
       --ring-line:#e6e7ea;
@@ -30,10 +28,10 @@
       overflow:hidden;
     }
 
-    /* New layout: LEFT segments | CENTER ring | RIGHT models */
+    /* Layout: LEFT filters | CENTER ring | RIGHT models+execute */
     .app{
       display:grid;
-      grid-template-columns: 280px 520px 1fr;
+      grid-template-columns: 300px 520px 1fr;
       gap:14px;
       padding:14px;
       height:100vh;
@@ -45,8 +43,9 @@
       border-radius:18px;
       box-shadow: var(--shadow);
       min-height:0;
+      overflow:hidden;
     }
-    .panel h2, .panel h3{
+    .panel h2{
       margin:0 0 10px 0;
       font-weight:700;
       letter-spacing:.2px;
@@ -61,93 +60,75 @@
       height:calc(100% - 60px);
     }
 
-    /* Sidebar */
-    .segments{
+    /* LEFT: Filters */
+    .filters{
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+    .filter-block{
+      background: var(--panel-2);
+      border:1px solid var(--ring-line);
+      border-radius:14px;
+      padding:10px;
       display:flex;
       flex-direction:column;
       gap:8px;
     }
+    .filter-title{
+      font-weight:800;
+      font-size:12px;
+      letter-spacing:.6px;
+      color:#111;
+      text-transform:uppercase;
+    }
     .seg-btn{
       display:flex; align-items:center; justify-content:space-between;
       width:100%;
-      padding:12px 12px;
-      background:var(--panel-2);
+      padding:10px 10px;
+      background:#fff;
       border:1px solid var(--ring-line);
       color:var(--ink);
-      border-radius:12px;
+      border-radius:10px;
       cursor:pointer;
       transition:.18s ease;
       font-weight:600;
     }
     .seg-btn small{color:var(--muted); font-weight:500;}
-    .seg-btn:hover{
-      transform:translateY(-1px);
-      border-color:#d6d8dd;
-      box-shadow: var(--shadow-soft);
-    }
+    .seg-btn:hover{transform:translateY(-1px); box-shadow:var(--shadow-soft);}
     .seg-btn.active{
-      background:#fff;
-      border-color:#c8cbd2;
+      border-color:#111;
       box-shadow: inset 0 0 0 1px #111;
     }
 
-    /* Car list (right side) */
-    .car-grid{
-      display:grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-      gap:10px;
-    }
-    .car-card{
-      position:relative;
+    .select{
+      width:100%;
+      padding:10px 12px;
       background:#fff;
       border:1px solid var(--ring-line);
-      border-radius:14px;
-      padding:10px;
-      cursor:grab;
-      user-select:none;
-      transition:.18s ease;
-      display:flex;
-      gap:10px;
-      align-items:center;
-      box-shadow: var(--shadow-soft);
+      border-radius:10px;
+      color:var(--ink);
+      font-weight:600;
     }
-    .car-card:active{cursor:grabbing}
-    .car-card:hover{
-      transform:translateY(-2px);
-      border-color:#d6d8dd;
-    }
-    .badge{
-      font-size:10px;
-      color:#fff;
+    .clear-btn{
+      padding:10px 12px;
       background:#111;
-      padding:3px 7px;
-      border-radius:999px;
+      color:#fff;
+      border:0;
+      border-radius:10px;
       font-weight:800;
-      letter-spacing:.4px;
+      cursor:pointer;
+      transition:.18s ease;
     }
-    .car-icon{
-      width:64px;height:42px;border-radius:10px;
-      background: #f3f4f6;
-      display:grid;place-items:center;
-      font-size:20px;
-      border:1px solid #e7e8ec;
-      flex:0 0 auto;
-    }
-    .car-meta{
-      display:flex;flex-direction:column;gap:3px;min-width:0;
-    }
-    .car-meta .name{font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-    .car-meta .sub{color:var(--muted); font-size:12px;}
-    /* price removed */
+    .clear-btn:hover{transform:translateY(-1px);}
 
-    /* Ring area now middle column */
+    /* CENTER: Ring */
     .ring-wrap{
       height:100%;
       display:grid;
-      grid-template-rows: auto 1fr auto;
+      grid-template-rows: auto 1fr;
       gap:10px;
     }
-
     .ring-stage{
       position:relative;
       height:100%;
@@ -156,7 +137,6 @@
       padding:8px;
       overflow:hidden;
     }
-
     .ring{
       position:relative;
       width:420px;
@@ -166,7 +146,6 @@
       border: 1px solid var(--ring-line);
       box-shadow: 0 18px 60px rgba(16,18,25,.10);
     }
-
     .ring::after{
       content:"";
       position:absolute; inset:7%;
@@ -174,7 +153,6 @@
       border:1px dashed #e3e4e8;
       pointer-events:none;
     }
-
     .ring-center{
       position:absolute; inset:28%;
       border-radius:999px;
@@ -183,9 +161,7 @@
       display:grid; place-items:center; text-align:center; padding:18px;
       color:var(--muted);
       font-size:13px;
-      letter-spacing:.2px;
     }
-
     .slot{
       position:absolute;
       width:94px; height:60px;
@@ -196,7 +172,6 @@
       color:var(--muted);
       font-size:11px;
       transition:.18s ease;
-      outline:0 solid transparent;
       box-shadow: var(--shadow-soft);
     }
     .slot.highlight{
@@ -204,7 +179,6 @@
       outline:3px solid rgba(17,17,17,.06);
       transform:scale(1.03);
     }
-
     .slot .mini{
       width:100%;height:100%;
       display:flex;align-items:center;gap:6px;
@@ -231,26 +205,85 @@
       font-size:12px;font-weight:900; cursor:pointer;
       box-shadow:0 6px 14px rgba(0,0,0,.20);
     }
-
     .pop{ animation:pop .30s ease; }
     @keyframes pop{
       0%{transform:scale(.9); opacity:.4}
       100%{transform:scale(1); opacity:1}
     }
 
-    /* Bottom controls */
-    .controls{
+    /* RIGHT: Models grid */
+    .right-wrap{
+      height:100%;
       display:grid;
-      grid-template-columns: 1fr;
+      grid-template-rows:auto 1fr auto; /* header, models, execute */
+      min-height:0;
+    }
+    .car-grid{
+      display:grid;
+      grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+      gap:10px;
+      padding:14px;
+      overflow:auto;
+      min-height:0;
+    }
+    .car-card{
+      background:#fff;
+      border:1px solid var(--ring-line);
+      border-radius:14px;
+      padding:10px;
+      cursor:grab;
+      user-select:none;
+      transition:.18s ease;
+      display:flex;
+      gap:10px;
+      align-items:center;
+      box-shadow: var(--shadow-soft);
+    }
+    .car-card:active{cursor:grabbing}
+    .car-card:hover{
+      transform:translateY(-2px);
+      border-color:#d6d8dd;
+    }
+    .badge{
+      font-size:10px;
+      color:#fff;
+      background:#111;
+      padding:3px 7px;
+      border-radius:999px;
+      font-weight:800;
+      letter-spacing:.4px;
+      display:inline-block;
+      margin-right:4px;
+      margin-top:2px;
+    }
+    .car-icon{
+      width:64px;height:42px;border-radius:10px;
+      background: #f3f4f6;
+      display:grid;place-items:center;
+      font-size:20px;
+      border:1px solid #e7e8ec;
+      flex:0 0 auto;
+    }
+    .car-meta{display:flex;flex-direction:column;gap:3px;min-width:0;}
+    .car-meta .name{font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+    .car-meta .sub{color:var(--muted); font-size:12px;}
+
+    /* Right execute bar (always visible) */
+    .execute-bar{
+      border-top:1px solid #f0f1f3;
+      padding:12px 14px;
+      background:#fff;
+      position:sticky;
+      bottom:0;
+      display:grid;
       gap:8px;
     }
-    .select, .input{
+    .input{
       width:100%;
       padding:10px 12px;
       background:#fff;
       border:1px solid var(--ring-line);
       border-radius:10px;
-      color:var(--ink);
       font-weight:600;
     }
     .btn{
@@ -287,19 +320,48 @@
 <body>
 <div class="app">
 
-  <!-- LEFT: Segments -->
+  <!-- LEFT: Filters -->
   <aside class="panel">
     <header>
-      <h2>Segments</h2>
+      <h2>Filters</h2>
       <div class="hud">
-        <span>Pick a category</span>
-        <span class="pill" id="segCount">0 models</span>
+        <span>All models visible by default</span>
+        <span class="pill" id="visibleCount">0 shown</span>
       </div>
     </header>
-    <div class="content segments" id="segments"></div>
+    <div class="content filters">
+
+      <div class="filter-block">
+        <div class="filter-title">Segment</div>
+        <div id="segments" class="segments"></div>
+      </div>
+
+      <div class="filter-block">
+        <div class="filter-title">Vehicle class</div>
+        <select class="select" id="classFilter">
+          <option value="all">All (PCV + LCV)</option>
+          <option value="PCV">PCV</option>
+          <option value="LCV">LCV</option>
+        </select>
+      </div>
+
+      <div class="filter-block">
+        <div class="filter-title">Fuel type</div>
+        <select class="select" id="fuelFilter">
+          <option value="all">All fuels</option>
+          <option value="ICE">ICE</option>
+          <option value="HEV">HEV</option>
+          <option value="PHEV">PHEV</option>
+          <option value="BEV">BEV</option>
+          <option value="FCEV">FCEV</option>
+        </select>
+      </div>
+
+      <button class="clear-btn" id="clearFilters">Clear filters</button>
+    </div>
   </aside>
 
-  <!-- CENTER: Ring + controls -->
+  <!-- CENTER: Ring -->
   <section class="panel ring-wrap">
     <header>
       <h2>Comparison Ring</h2>
@@ -321,123 +383,139 @@
         <!-- slots injected here -->
       </div>
     </div>
-
-    <div class="content controls">
-      <label>
-        Report style
-        <select class="select" id="reportStyle">
-          <option>Strategic overview</option>
-          <option>Tactical pricing deep-dive</option>
-          <option>Competitive delta snapshot</option>
-          <option>Custom…</option>
-        </select>
-      </label>
-      <label>
-        Notes / filter name
-        <input class="input" id="filterName" placeholder="e.g., Nordic EV comp set Q1" />
-      </label>
-      <button class="btn" id="executeBtn">Execute analysis</button>
-      <div style="font-size:12px;color:var(--muted);line-height:1.4">
-        POC only — backend hook comes later.
-      </div>
-    </div>
   </section>
 
-  <!-- RIGHT: Cars in segment -->
-  <main class="panel">
+  <!-- RIGHT: Models + Execute -->
+  <main class="panel right-wrap">
     <header>
-      <h2 id="segmentTitle">Select a segment</h2>
+      <h2 id="modelsTitle">Models</h2>
       <div class="hud">
-        <span id="segmentDesc">Drag cars into the ring ←</span>
+        <span id="modelsDesc">Drag cars into the ring ←</span>
         <span class="pill" id="dragHint">Drag & drop</span>
       </div>
     </header>
-    <div class="content">
-      <div class="car-grid" id="carGrid"></div>
+
+    <div class="car-grid" id="carGrid"></div>
+
+    <div class="execute-bar">
+      <label style="font-size:12px;color:var(--muted);font-weight:700;">Report style</label>
+      <select class="select" id="reportStyle">
+        <option>Strategic overview</option>
+        <option>Tactical pricing deep-dive</option>
+        <option>Competitive delta snapshot</option>
+        <option>Custom…</option>
+      </select>
+
+      <label style="font-size:12px;color:var(--muted);font-weight:700;">Notes / filter name</label>
+      <input class="input" id="filterName" placeholder="e.g., Nordic EV comp set Q1" />
+
+      <button class="btn" id="executeBtn">Execute analysis</button>
+
+      <div style="font-size:12px;color:var(--muted);line-height:1.4">
+        POC only — backend hook comes later.
+      </div>
     </div>
   </main>
 
 </div>
 
 <script>
-/* ------------------ Fake data ------------------ */
+/* ------------------ Fake data w/ class + fuel ------------------ */
 const SEGMENTS = [
   {
     id:"suv",
     name:"SUV",
-    desc:"High-riding, family-friendly chaos goblins.",
     cars:[
-      {id:"suv-1", name:"Volto Terra X", brand:"Volto", icon:"🚙"},
-      {id:"suv-2", name:"NordicTrail 7", brand:"Skandia", icon:"🛻"},
-      {id:"suv-3", name:"Auron Apex", brand:"Auron", icon:"🚘"},
-      {id:"suv-4", name:"Elektra Roam", brand:"Elektra", icon:"⚡"},
-      {id:"suv-5", name:"Gravix Ridge", brand:"Gravix", icon:"⛰️"},
-      {id:"suv-6", name:"Komet Atlas", brand:"Komet", icon:"🌌"}
+      {id:"suv-1", name:"Volto Terra X", brand:"Volto", icon:"🚙", vclass:"PCV", fuel:"BEV"},
+      {id:"suv-2", name:"NordicTrail 7", brand:"Skandia", icon:"🛻", vclass:"PCV", fuel:"ICE"},
+      {id:"suv-3", name:"Auron Apex", brand:"Auron", icon:"🚘", vclass:"PCV", fuel:"PHEV"},
+      {id:"suv-4", name:"Elektra Roam", brand:"Elektra", icon:"⚡", vclass:"PCV", fuel:"BEV"},
+      {id:"suv-5", name:"Gravix Ridge", brand:"Gravix", icon:"⛰️", vclass:"PCV", fuel:"HEV"},
+      {id:"suv-6", name:"Komet Atlas", brand:"Komet", icon:"🌌", vclass:"PCV", fuel:"ICE"}
     ]
   },
   {
     id:"sedan",
     name:"Sedan",
-    desc:"Low-slung efficiency missiles.",
     cars:[
-      {id:"sed-1", name:"Lumen S4", brand:"Lumen", icon:"🚗"},
-      {id:"sed-2", name:"Auron Linea", brand:"Auron", icon:"✨"},
-      {id:"sed-3", name:"Volto Arc", brand:"Volto", icon:"⚡"},
-      {id:"sed-4", name:"Skandia Fjord", brand:"Skandia", icon:"🌊"},
-      {id:"sed-5", name:"Komet Silkway", brand:"Komet", icon:"🪐"}
+      {id:"sed-1", name:"Lumen S4", brand:"Lumen", icon:"🚗", vclass:"PCV", fuel:"ICE"},
+      {id:"sed-2", name:"Auron Linea", brand:"Auron", icon:"✨", vclass:"PCV", fuel:"HEV"},
+      {id:"sed-3", name:"Volto Arc", brand:"Volto", icon:"⚡", vclass:"PCV", fuel:"BEV"},
+      {id:"sed-4", name:"Skandia Fjord", brand:"Skandia", icon:"🌊", vclass:"PCV", fuel:"PHEV"},
+      {id:"sed-5", name:"Komet Silkway", brand:"Komet", icon:"🪐", vclass:"PCV", fuel:"ICE"}
     ]
   },
   {
     id:"pickup",
     name:"Pick-up",
-    desc:"Workhorse + weekend warrior.",
     cars:[
-      {id:"pu-1", name:"Gravix HaulPro", brand:"Gravix", icon:"🛻"},
-      {id:"pu-2", name:"NordicTrail Cargo", brand:"Skandia", icon:"🧰"},
-      {id:"pu-3", name:"Komet Ranger", brand:"Komet", icon:"🏕️"},
-      {id:"pu-4", name:"Volto Forge", brand:"Volto", icon:"🔧"}
+      {id:"pu-1", name:"Gravix HaulPro", brand:"Gravix", icon:"🛻", vclass:"LCV", fuel:"ICE"},
+      {id:"pu-2", name:"NordicTrail Cargo", brand:"Skandia", icon:"🧰", vclass:"LCV", fuel:"ICE"},
+      {id:"pu-3", name:"Komet Ranger", brand:"Komet", icon:"🏕️", vclass:"LCV", fuel:"PHEV"},
+      {id:"pu-4", name:"Volto Forge", brand:"Volto", icon:"🔧", vclass:"LCV", fuel:"BEV"}
     ]
   },
   {
     id:"lux",
     name:"Luxury",
-    desc:"Quietly aggressive couches with horsepower.",
     cars:[
-      {id:"lx-1", name:"Auron Halo GT", brand:"Auron", icon:"👑"},
-      {id:"lx-2", name:"Lumen Noir", brand:"Lumen", icon:"🖤"},
-      {id:"lx-3", name:"Volto Echelon", brand:"Volto", icon:"💎"},
-      {id:"lx-4", name:"Komet Zenith", brand:"Komet", icon:"🏔️"},
-      {id:"lx-5", name:"Skandia Aurora", brand:"Skandia", icon:"🌅"}
+      {id:"lx-1", name:"Auron Halo GT", brand:"Auron", icon:"👑", vclass:"PCV", fuel:"ICE"},
+      {id:"lx-2", name:"Lumen Noir", brand:"Lumen", icon:"🖤", vclass:"PCV", fuel:"HEV"},
+      {id:"lx-3", name:"Volto Echelon", brand:"Volto", icon:"💎", vclass:"PCV", fuel:"BEV"},
+      {id:"lx-4", name:"Komet Zenith", brand:"Komet", icon:"🏔️", vclass:"PCV", fuel:"PHEV"},
+      {id:"lx-5", name:"Skandia Aurora", brand:"Skandia", icon:"🌅", vclass:"PCV", fuel:"ICE"}
     ]
   }
 ];
 
+const ALL_CARS = SEGMENTS.flatMap(s => s.cars.map(c => ({...c, segment:s.id, segmentName:s.name})));
+
 /* ------------------ State ------------------ */
 const state = {
-  segment: null,
+  filters: {
+    segment: "all",
+    vclass: "all",
+    fuel: "all"
+  },
   picked: Array(10).fill(null)
 };
 
 /* ------------------ DOM refs ------------------ */
 const segmentsEl = document.getElementById("segments");
 const carGridEl = document.getElementById("carGrid");
-const segmentTitleEl = document.getElementById("segmentTitle");
-const segmentDescEl = document.getElementById("segmentDesc");
-const segCountEl = document.getElementById("segCount");
+const visibleCountEl = document.getElementById("visibleCount");
 const pickedCountEl = document.getElementById("pickedCount");
 const ringEl = document.getElementById("ring");
+const classFilterEl = document.getElementById("classFilter");
+const fuelFilterEl = document.getElementById("fuelFilter");
+
+/* ------------------ Filters logic ------------------ */
+function getFilteredCars(){
+  return ALL_CARS.filter(c => {
+    if(state.filters.segment !== "all" && c.segment !== state.filters.segment) return false;
+    if(state.filters.vclass !== "all" && c.vclass !== state.filters.vclass) return false;
+    if(state.filters.fuel !== "all" && c.fuel !== state.filters.fuel) return false;
+    return true;
+  });
+}
 
 /* ------------------ Render segments ------------------ */
 function renderSegments(){
   segmentsEl.innerHTML = "";
+
+  // "All" button
+  const allBtn = document.createElement("button");
+  allBtn.className = "seg-btn" + (state.filters.segment==="all" ? " active":"");
+  allBtn.innerHTML = `<span>All segments</span><small>${ALL_CARS.length} models</small>`;
+  allBtn.onclick = ()=>{ state.filters.segment="all"; update(); };
+  segmentsEl.appendChild(allBtn);
+
   SEGMENTS.forEach(seg=>{
     const btn = document.createElement("button");
-    btn.className = "seg-btn" + (state.segment?.id===seg.id ? " active":"");
-    btn.innerHTML = `
-      <span>${seg.name}</span>
-      <small>${seg.cars.length} models</small>
-    `;
-    btn.onclick = ()=>selectSegment(seg.id);
+    btn.className = "seg-btn" + (state.filters.segment===seg.id ? " active":"");
+    const count = seg.cars.length;
+    btn.innerHTML = `<span>${seg.name}</span><small>${count} models</small>`;
+    btn.onclick = ()=>{ state.filters.segment=seg.id; update(); };
     segmentsEl.appendChild(btn);
   });
 }
@@ -445,17 +523,11 @@ function renderSegments(){
 /* ------------------ Render car list ------------------ */
 function renderCars(){
   carGridEl.innerHTML = "";
-  if(!state.segment){
-    segmentTitleEl.textContent = "Select a segment";
-    segmentDescEl.textContent = "Choose on the left to load models.";
-    segCountEl.textContent = "0 models";
-    return;
-  }
-  segmentTitleEl.textContent = state.segment.name;
-  segmentDescEl.textContent = state.segment.desc;
-  segCountEl.textContent = `${state.segment.cars.length} models`;
 
-  state.segment.cars.forEach(car=>{
+  const cars = getFilteredCars();
+  visibleCountEl.textContent = `${cars.length} shown`;
+
+  cars.forEach(car=>{
     const card = document.createElement("div");
     card.className = "car-card";
     card.draggable = true;
@@ -465,7 +537,11 @@ function renderCars(){
       <div class="car-meta">
         <div class="name">${car.name}</div>
         <div class="sub">${car.brand}</div>
-        <div><span class="badge">${state.segment.name.toUpperCase()}</span></div>
+        <div>
+          <span class="badge">${car.segmentName.toUpperCase()}</span>
+          <span class="badge">${car.vclass}</span>
+          <span class="badge">${car.fuel}</span>
+        </div>
       </div>
     `;
     card.addEventListener("dragstart", (e)=>{
@@ -485,7 +561,7 @@ function renderCars(){
 function createSlots(){
   const slotCount = 10;
   const radius = 178;
-  const center = 210; // ring width/2
+  const center = 210;
   for(let i=0;i<slotCount;i++){
     const angle = (i/slotCount)*Math.PI*2 - Math.PI/2;
     const x = center + radius*Math.cos(angle) - 47;
@@ -502,9 +578,7 @@ function createSlots(){
       slot.classList.add("highlight");
       e.dataTransfer.dropEffect = "move";
     });
-    slot.addEventListener("dragleave",()=>{
-      slot.classList.remove("highlight");
-    });
+    slot.addEventListener("dragleave",()=> slot.classList.remove("highlight"));
     slot.addEventListener("drop",(e)=>{
       e.preventDefault();
       slot.classList.remove("highlight");
@@ -538,18 +612,16 @@ function renderSlots(){
       return;
     }
     slot.innerHTML = `
-      <div class="mini pop" draggable="true" data-carid="${car.id}">
+      <div class="mini pop" draggable="true">
         <div class="mini-icon">${car.icon}</div>
         <div class="mini-name" title="${car.name}">${car.name}</div>
       </div>
       <div class="remove" title="Remove">×</div>
     `;
 
-    const mini = slot.querySelector(".mini");
-    mini.addEventListener("dragstart",(e)=>{
+    slot.querySelector(".mini").addEventListener("dragstart",(e)=>{
       e.dataTransfer.setData("text/plain", car.id);
       e.dataTransfer.effectAllowed = "move";
-      e.dataTransfer.setData("text/fromSlot", i);
     });
 
     slot.querySelector(".remove").onclick = ()=>{
@@ -562,8 +634,7 @@ function renderSlots(){
 }
 
 function highlightOpenSlots(){
-  const slots = [...ringEl.querySelectorAll(".slot")];
-  slots.forEach((slot, i)=>{
+  ringEl.querySelectorAll(".slot").forEach((slot, i)=>{
     if(state.picked[i]===null) slot.classList.add("highlight");
   });
 }
@@ -574,7 +645,7 @@ function clearSlotHighlights(){
 
 /* ------------------ Add/remove logic ------------------ */
 function addCarToSlot(carId, slotIndex){
-  const car = SEGMENTS.flatMap(s=>s.cars).find(c=>c.id===carId);
+  const car = ALL_CARS.find(c=>c.id===carId);
   if(!car) return;
 
   const already = state.picked.findIndex(c=>c?.id===carId);
@@ -584,11 +655,23 @@ function addCarToSlot(carId, slotIndex){
   update();
 }
 
-/* ------------------ Segment selection ------------------ */
-function selectSegment(id){
-  state.segment = SEGMENTS.find(s=>s.id===id);
+/* ------------------ Filter events ------------------ */
+classFilterEl.addEventListener("change", e=>{
+  state.filters.vclass = e.target.value;
   update();
-}
+});
+fuelFilterEl.addEventListener("change", e=>{
+  state.filters.fuel = e.target.value;
+  update();
+});
+document.getElementById("clearFilters").onclick = ()=>{
+  state.filters.segment="all";
+  state.filters.vclass="all";
+  state.filters.fuel="all";
+  classFilterEl.value="all";
+  fuelFilterEl.value="all";
+  update();
+};
 
 /* ------------------ Execute button ------------------ */
 document.getElementById("executeBtn").onclick = ()=>{

@@ -6,55 +6,54 @@
   <title>Egaux Car Segment Comparator (POC)</title>
   <style>
     :root{
-      --bg: #06070a;
-      --panel: #0e1118;
-      --panel-2:#0b0d12;
-      --ink: #e7ecf4;
-      --muted:#8a93a7;
-      --accent:#7c5cff;
-      --accent-2:#2ee6a6;
-      --danger:#ff5c7a;
-      --ring:#1b2230;
-      --ring-glow: 0 0 40px rgba(124,92,255,.35), 0 0 120px rgba(46,230,166,.15);
+      --bg: #f7f7f8;
+      --panel: #ffffff;
+      --panel-2:#fafafa;
+      --ink: #0b0c0f;
+      --muted:#6f7685;
+      --accent:#111111;      /* luxury = restraint */
+      --accent-2:#3a3a3a;
+      --danger:#111111;
+      --ring:#ffffff;
+      --ring-line:#e6e7ea;
+      --shadow: 0 10px 30px rgba(16,18,25,.08);
+      --shadow-soft: 0 6px 16px rgba(16,18,25,.06);
     }
 
     *{box-sizing:border-box}
     body{
       margin:0;
-      background:
-        radial-gradient(1200px 900px at 70% 20%, #0e1330 0%, transparent 60%),
-        radial-gradient(900px 700px at 10% 80%, #0e2a22 0%, transparent 55%),
-        var(--bg);
+      background: var(--bg);
       color:var(--ink);
-      font-family:system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
       height:100vh;
       overflow:hidden;
     }
 
+    /* New layout: LEFT segments | CENTER ring | RIGHT models */
     .app{
       display:grid;
-      grid-template-columns: 300px 1fr 420px;
+      grid-template-columns: 280px 520px 1fr;
       gap:14px;
       padding:14px;
       height:100vh;
     }
 
-    /* Panels */
     .panel{
-      background:linear-gradient(180deg, rgba(255,255,255,.02), transparent 40%), var(--panel);
-      border:1px solid rgba(255,255,255,.06);
+      background: var(--panel);
+      border:1px solid var(--ring-line);
       border-radius:18px;
-      box-shadow: 0 10px 40px rgba(0,0,0,.5);
-      backdrop-filter: blur(6px);
+      box-shadow: var(--shadow);
       min-height:0;
     }
     .panel h2, .panel h3{
       margin:0 0 10px 0;
       font-weight:700;
-      letter-spacing:.3px;
+      letter-spacing:.2px;
     }
     .panel header{
       padding:14px 14px 0 14px;
+      border-bottom: 1px solid #f0f1f3;
     }
     .panel .content{
       padding:14px;
@@ -73,56 +72,54 @@
       width:100%;
       padding:12px 12px;
       background:var(--panel-2);
-      border:1px solid rgba(255,255,255,.06);
+      border:1px solid var(--ring-line);
       color:var(--ink);
       border-radius:12px;
       cursor:pointer;
-      transition:.2s ease;
+      transition:.18s ease;
       font-weight:600;
     }
     .seg-btn small{color:var(--muted); font-weight:500;}
     .seg-btn:hover{
       transform:translateY(-1px);
-      border-color:rgba(124,92,255,.6);
-      box-shadow:0 0 0 1px rgba(124,92,255,.3), 0 8px 30px rgba(124,92,255,.15);
+      border-color:#d6d8dd;
+      box-shadow: var(--shadow-soft);
     }
     .seg-btn.active{
-      background:
-        radial-gradient(600px 120px at 10% 0%, rgba(124,92,255,.25), transparent 60%),
-        var(--panel-2);
-      border-color:rgba(124,92,255,.9);
-      box-shadow:0 0 0 1px rgba(124,92,255,.4), 0 10px 40px rgba(124,92,255,.2);
+      background:#fff;
+      border-color:#c8cbd2;
+      box-shadow: inset 0 0 0 1px #111;
     }
 
-    /* Car list */
+    /* Car list (right side) */
     .car-grid{
       display:grid;
-      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
       gap:10px;
     }
     .car-card{
       position:relative;
-      background:linear-gradient(160deg, rgba(255,255,255,.06), transparent 45%), #0b0e15;
-      border:1px solid rgba(255,255,255,.08);
+      background:#fff;
+      border:1px solid var(--ring-line);
       border-radius:14px;
       padding:10px;
       cursor:grab;
       user-select:none;
-      transition:.2s ease;
+      transition:.18s ease;
       display:flex;
       gap:10px;
       align-items:center;
+      box-shadow: var(--shadow-soft);
     }
     .car-card:active{cursor:grabbing}
     .car-card:hover{
       transform:translateY(-2px);
-      border-color:rgba(46,230,166,.7);
-      box-shadow:0 10px 30px rgba(0,0,0,.5), 0 0 0 1px rgba(46,230,166,.25);
+      border-color:#d6d8dd;
     }
     .badge{
-      font-size:11px;
-      color:#0b0e15;
-      background:linear-gradient(90deg,var(--accent), var(--accent-2));
+      font-size:10px;
+      color:#fff;
+      background:#111;
       padding:3px 7px;
       border-radius:999px;
       font-weight:800;
@@ -130,23 +127,20 @@
     }
     .car-icon{
       width:64px;height:42px;border-radius:10px;
-      background: radial-gradient(80px 50px at 30% 10%, rgba(255,255,255,.35), transparent 60%),
-                  linear-gradient(180deg, rgba(124,92,255,.25), rgba(0,0,0,.2)),
-                  #10162a;
+      background: #f3f4f6;
       display:grid;place-items:center;
-      font-size:22px;
-      border:1px solid rgba(255,255,255,.08);
+      font-size:20px;
+      border:1px solid #e7e8ec;
       flex:0 0 auto;
-      box-shadow: inset 0 0 12px rgba(124,92,255,.35);
     }
     .car-meta{
       display:flex;flex-direction:column;gap:3px;min-width:0;
     }
     .car-meta .name{font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
     .car-meta .sub{color:var(--muted); font-size:12px;}
-    .car-meta .price{font-size:12px; color:#b7c2d9;}
+    /* price removed */
 
-    /* Ring area */
+    /* Ring area now middle column */
     .ring-wrap{
       height:100%;
       display:grid;
@@ -165,26 +159,28 @@
 
     .ring{
       position:relative;
-      width:340px;
+      width:420px;
       aspect-ratio:1/1;
       border-radius:999px;
-      background:
-        radial-gradient(circle at 50% 50%, transparent 46%, rgba(255,255,255,.06) 47%, transparent 48%),
-        radial-gradient(circle at 50% 50%, rgba(124,92,255,.08), transparent 60%),
-        var(--ring);
-      border:1px dashed rgba(255,255,255,.1);
-      box-shadow: var(--ring-glow);
+      background: var(--ring);
+      border: 1px solid var(--ring-line);
+      box-shadow: 0 18px 60px rgba(16,18,25,.10);
+    }
+
+    .ring::after{
+      content:"";
+      position:absolute; inset:7%;
+      border-radius:999px;
+      border:1px dashed #e3e4e8;
+      pointer-events:none;
     }
 
     .ring-center{
-      position:absolute; inset:24%;
+      position:absolute; inset:28%;
       border-radius:999px;
-      background:
-        radial-gradient(circle at 30% 20%, rgba(46,230,166,.18), transparent 60%),
-        radial-gradient(circle at 70% 80%, rgba(124,92,255,.18), transparent 60%),
-        #0a0d14;
-      border:1px solid rgba(255,255,255,.08);
-      display:grid; place-items:center; text-align:center; padding:16px;
+      background:#fff;
+      border:1px solid var(--ring-line);
+      display:grid; place-items:center; text-align:center; padding:18px;
       color:var(--muted);
       font-size:13px;
       letter-spacing:.2px;
@@ -192,21 +188,21 @@
 
     .slot{
       position:absolute;
-      width:86px; height:56px;
+      width:94px; height:60px;
       border-radius:12px;
-      background:rgba(10,12,18,.9);
-      border:1px solid rgba(255,255,255,.1);
+      background:#fff;
+      border:1px solid var(--ring-line);
       display:grid; place-items:center;
       color:var(--muted);
       font-size:11px;
-      transition:.2s ease;
+      transition:.18s ease;
       outline:0 solid transparent;
+      box-shadow: var(--shadow-soft);
     }
     .slot.highlight{
-      background:rgba(46,230,166,.06);
-      border-color:rgba(46,230,166,.9);
-      outline:3px solid rgba(46,230,166,.15);
-      transform:scale(1.04);
+      border-color:#111;
+      outline:3px solid rgba(17,17,17,.06);
+      transform:scale(1.03);
     }
 
     .slot .mini{
@@ -218,31 +214,28 @@
     }
     .slot .mini .mini-icon{
       width:34px;height:24px;border-radius:7px;
-      background:linear-gradient(180deg, rgba(255,255,255,.2), transparent), #1a2340;
+      background:#f3f4f6;
       display:grid;place-items:center;font-size:13px;
-      border:1px solid rgba(255,255,255,.12);
+      border:1px solid #e7e8ec;
       flex:0 0 auto;
     }
     .slot .mini .mini-name{
       font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-      max-width:80px;
+      max-width:90px;
     }
     .slot .remove{
       position:absolute; top:-7px; right:-7px;
       width:20px;height:20px;border-radius:999px;
-      background:var(--danger);
+      background:#111;
       color:white; display:grid;place-items:center;
       font-size:12px;font-weight:900; cursor:pointer;
-      box-shadow:0 6px 14px rgba(255,92,122,.45);
+      box-shadow:0 6px 14px rgba(0,0,0,.20);
     }
 
-    .pop{
-      animation:pop .35s ease;
-    }
+    .pop{ animation:pop .30s ease; }
     @keyframes pop{
-      0%{transform:scale(.8); opacity:.2}
-      70%{transform:scale(1.08); opacity:1}
-      100%{transform:scale(1)}
+      0%{transform:scale(.9); opacity:.4}
+      100%{transform:scale(1); opacity:1}
     }
 
     /* Bottom controls */
@@ -254,8 +247,8 @@
     .select, .input{
       width:100%;
       padding:10px 12px;
-      background:#0a0d14;
-      border:1px solid rgba(255,255,255,.09);
+      background:#fff;
+      border:1px solid var(--ring-line);
       border-radius:10px;
       color:var(--ink);
       font-weight:600;
@@ -268,28 +261,26 @@
       font-weight:800;
       letter-spacing:.5px;
       cursor:pointer;
-      background: linear-gradient(90deg, var(--accent), var(--accent-2));
-      color:#05060a;
-      box-shadow: 0 12px 40px rgba(124,92,255,.28);
-      transition:.2s ease;
+      background: #111;
+      color:#fff;
+      box-shadow: var(--shadow);
+      transition:.18s ease;
     }
     .btn:hover{transform:translateY(-1px);}
     .btn:active{transform:translateY(1px);}
 
-    /* Tiny HUD */
     .hud{
       display:flex; justify-content:space-between; align-items:center;
       font-size:12px; color:var(--muted);
       padding:0 14px 10px;
     }
     .pill{
-      padding:4px 8px; border-radius:999px; background:#0a0d14;
-      border:1px solid rgba(255,255,255,.08); color:var(--ink); font-weight:700;
+      padding:4px 8px; border-radius:999px; background:#fff;
+      border:1px solid var(--ring-line); color:var(--ink); font-weight:700;
     }
 
-    /* Scrollbar polish */
     ::-webkit-scrollbar{width:10px;height:10px}
-    ::-webkit-scrollbar-thumb{background:#1b2230;border-radius:999px}
+    ::-webkit-scrollbar-thumb{background:#d9dbe0;border-radius:999px}
     ::-webkit-scrollbar-track{background:transparent}
   </style>
 </head>
@@ -308,21 +299,7 @@
     <div class="content segments" id="segments"></div>
   </aside>
 
-  <!-- MIDDLE: Cars in segment -->
-  <main class="panel">
-    <header>
-      <h2 id="segmentTitle">Select a segment</h2>
-      <div class="hud">
-        <span id="segmentDesc">Drag cars into the ring →</span>
-        <span class="pill" id="dragHint">Drag & drop</span>
-      </div>
-    </header>
-    <div class="content">
-      <div class="car-grid" id="carGrid"></div>
-    </div>
-  </main>
-
-  <!-- RIGHT: Ring + controls -->
+  <!-- CENTER: Ring + controls -->
   <section class="panel ring-wrap">
     <header>
       <h2>Comparison Ring</h2>
@@ -338,8 +315,8 @@
           <div style="font-weight:800;color:var(--ink);font-size:14px;margin-bottom:4px;">
             Egaux Pricing Toolkit
           </div>
-          Your current comparison basket.<br/>
-          Drag a model here to include it.
+          Your comparison selection.<br/>
+          Drag a model into the ring.
         </div>
         <!-- slots injected here -->
       </div>
@@ -361,10 +338,24 @@
       </label>
       <button class="btn" id="executeBtn">Execute analysis</button>
       <div style="font-size:12px;color:var(--muted);line-height:1.4">
-        POC only — this button will later trigger backend jobs / exports.
+        POC only — backend hook comes later.
       </div>
     </div>
   </section>
+
+  <!-- RIGHT: Cars in segment -->
+  <main class="panel">
+    <header>
+      <h2 id="segmentTitle">Select a segment</h2>
+      <div class="hud">
+        <span id="segmentDesc">Drag cars into the ring ←</span>
+        <span class="pill" id="dragHint">Drag & drop</span>
+      </div>
+    </header>
+    <div class="content">
+      <div class="car-grid" id="carGrid"></div>
+    </div>
+  </main>
 
 </div>
 
@@ -376,12 +367,12 @@ const SEGMENTS = [
     name:"SUV",
     desc:"High-riding, family-friendly chaos goblins.",
     cars:[
-      {id:"suv-1", name:"Volto Terra X", brand:"Volto", price:"€54,000", icon:"🚙"},
-      {id:"suv-2", name:"NordicTrail 7", brand:"Skandia", price:"€49,500", icon:"🛻"},
-      {id:"suv-3", name:"Auron Apex", brand:"Auron", price:"€72,200", icon:"🚘"},
-      {id:"suv-4", name:"Elektra Roam", brand:"Elektra", price:"€58,900", icon:"⚡"},
-      {id:"suv-5", name:"Gravix Ridge", brand:"Gravix", price:"€44,800", icon:"⛰️"},
-      {id:"suv-6", name:"Komet Atlas", brand:"Komet", price:"€61,300", icon:"🌌"}
+      {id:"suv-1", name:"Volto Terra X", brand:"Volto", icon:"🚙"},
+      {id:"suv-2", name:"NordicTrail 7", brand:"Skandia", icon:"🛻"},
+      {id:"suv-3", name:"Auron Apex", brand:"Auron", icon:"🚘"},
+      {id:"suv-4", name:"Elektra Roam", brand:"Elektra", icon:"⚡"},
+      {id:"suv-5", name:"Gravix Ridge", brand:"Gravix", icon:"⛰️"},
+      {id:"suv-6", name:"Komet Atlas", brand:"Komet", icon:"🌌"}
     ]
   },
   {
@@ -389,11 +380,11 @@ const SEGMENTS = [
     name:"Sedan",
     desc:"Low-slung efficiency missiles.",
     cars:[
-      {id:"sed-1", name:"Lumen S4", brand:"Lumen", price:"€39,900", icon:"🚗"},
-      {id:"sed-2", name:"Auron Linea", brand:"Auron", price:"€42,700", icon:"✨"},
-      {id:"sed-3", name:"Volto Arc", brand:"Volto", price:"€35,500", icon:"⚡"},
-      {id:"sed-4", name:"Skandia Fjord", brand:"Skandia", price:"€37,200", icon:"🌊"},
-      {id:"sed-5", name:"Komet Silkway", brand:"Komet", price:"€46,100", icon:"🪐"}
+      {id:"sed-1", name:"Lumen S4", brand:"Lumen", icon:"🚗"},
+      {id:"sed-2", name:"Auron Linea", brand:"Auron", icon:"✨"},
+      {id:"sed-3", name:"Volto Arc", brand:"Volto", icon:"⚡"},
+      {id:"sed-4", name:"Skandia Fjord", brand:"Skandia", icon:"🌊"},
+      {id:"sed-5", name:"Komet Silkway", brand:"Komet", icon:"🪐"}
     ]
   },
   {
@@ -401,10 +392,10 @@ const SEGMENTS = [
     name:"Pick-up",
     desc:"Workhorse + weekend warrior.",
     cars:[
-      {id:"pu-1", name:"Gravix HaulPro", brand:"Gravix", price:"€51,000", icon:"🛻"},
-      {id:"pu-2", name:"NordicTrail Cargo", brand:"Skandia", price:"€47,900", icon:"🧰"},
-      {id:"pu-3", name:"Komet Ranger", brand:"Komet", price:"€55,300", icon:"🏕️"},
-      {id:"pu-4", name:"Volto Forge", brand:"Volto", price:"€59,400", icon:"🔧"}
+      {id:"pu-1", name:"Gravix HaulPro", brand:"Gravix", icon:"🛻"},
+      {id:"pu-2", name:"NordicTrail Cargo", brand:"Skandia", icon:"🧰"},
+      {id:"pu-3", name:"Komet Ranger", brand:"Komet", icon:"🏕️"},
+      {id:"pu-4", name:"Volto Forge", brand:"Volto", icon:"🔧"}
     ]
   },
   {
@@ -412,11 +403,11 @@ const SEGMENTS = [
     name:"Luxury",
     desc:"Quietly aggressive couches with horsepower.",
     cars:[
-      {id:"lx-1", name:"Auron Halo GT", brand:"Auron", price:"€98,000", icon:"👑"},
-      {id:"lx-2", name:"Lumen Noir", brand:"Lumen", price:"€88,700", icon:"🖤"},
-      {id:"lx-3", name:"Volto Echelon", brand:"Volto", price:"€102,500", icon:"💎"},
-      {id:"lx-4", name:"Komet Zenith", brand:"Komet", price:"€110,900", icon:"🏔️"},
-      {id:"lx-5", name:"Skandia Aurora", brand:"Skandia", price:"€94,300", icon:"🌅"}
+      {id:"lx-1", name:"Auron Halo GT", brand:"Auron", icon:"👑"},
+      {id:"lx-2", name:"Lumen Noir", brand:"Lumen", icon:"🖤"},
+      {id:"lx-3", name:"Volto Echelon", brand:"Volto", icon:"💎"},
+      {id:"lx-4", name:"Komet Zenith", brand:"Komet", icon:"🏔️"},
+      {id:"lx-5", name:"Skandia Aurora", brand:"Skandia", icon:"🌅"}
     ]
   }
 ];
@@ -424,7 +415,7 @@ const SEGMENTS = [
 /* ------------------ State ------------------ */
 const state = {
   segment: null,
-  picked: Array(10).fill(null) // 10 ring slots
+  picked: Array(10).fill(null)
 };
 
 /* ------------------ DOM refs ------------------ */
@@ -474,14 +465,12 @@ function renderCars(){
       <div class="car-meta">
         <div class="name">${car.name}</div>
         <div class="sub">${car.brand}</div>
-        <div class="price">${car.price}</div>
         <div><span class="badge">${state.segment.name.toUpperCase()}</span></div>
       </div>
     `;
     card.addEventListener("dragstart", (e)=>{
       e.dataTransfer.setData("text/plain", car.id);
       e.dataTransfer.effectAllowed = "move";
-      // subtle HUD nudge
       document.getElementById("dragHint").textContent = "Drop on ring";
     });
     card.addEventListener("dragend", ()=>{
@@ -494,14 +483,13 @@ function renderCars(){
 
 /* ------------------ Ring slots ------------------ */
 function createSlots(){
-  // place 10 slots evenly around the ring
   const slotCount = 10;
-  const radius = 145; // px from center
-  const center = 170; // ring box center (width/2)
+  const radius = 178;
+  const center = 210; // ring width/2
   for(let i=0;i<slotCount;i++){
     const angle = (i/slotCount)*Math.PI*2 - Math.PI/2;
-    const x = center + radius*Math.cos(angle) - 43; // slot width/2
-    const y = center + radius*Math.sin(angle) - 28; // slot height/2
+    const x = center + radius*Math.cos(angle) - 47;
+    const y = center + radius*Math.sin(angle) - 30;
     const slot = document.createElement("div");
     slot.className = "slot";
     slot.style.left = x+"px";
@@ -509,7 +497,6 @@ function createSlots(){
     slot.dataset.index = i;
     slot.innerHTML = `<div>Empty</div>`;
 
-    // dragover target
     slot.addEventListener("dragover",(e)=>{
       e.preventDefault();
       slot.classList.add("highlight");
@@ -528,7 +515,6 @@ function createSlots(){
     ringEl.appendChild(slot);
   }
 
-  // allow dropping anywhere on ring: auto-find open slot
   ringEl.addEventListener("dragover",(e)=>{
     e.preventDefault();
     highlightOpenSlots();
@@ -563,7 +549,6 @@ function renderSlots(){
     mini.addEventListener("dragstart",(e)=>{
       e.dataTransfer.setData("text/plain", car.id);
       e.dataTransfer.effectAllowed = "move";
-      // mark origin
       e.dataTransfer.setData("text/fromSlot", i);
     });
 
@@ -573,8 +558,7 @@ function renderSlots(){
     };
   });
 
-  pickedCountEl.textContent =
-    state.picked.filter(Boolean).length;
+  pickedCountEl.textContent = state.picked.filter(Boolean).length;
 }
 
 function highlightOpenSlots(){
@@ -590,16 +574,11 @@ function clearSlotHighlights(){
 
 /* ------------------ Add/remove logic ------------------ */
 function addCarToSlot(carId, slotIndex){
-  if(!state.segment) return;
   const car = SEGMENTS.flatMap(s=>s.cars).find(c=>c.id===carId);
   if(!car) return;
 
-  // prevent duplicates
   const already = state.picked.findIndex(c=>c?.id===carId);
-  if(already>=0){
-    // if dragging from another slot, move it
-    state.picked[already] = null;
-  }
+  if(already>=0) state.picked[already] = null;
 
   state.picked[slotIndex]=car;
   update();
@@ -617,7 +596,7 @@ document.getElementById("executeBtn").onclick = ()=>{
   const style = document.getElementById("reportStyle").value;
   const name = document.getElementById("filterName").value || "Unnamed filter";
   alert(
-`POC execute 🔥
+`POC execute
 
 Filter: ${name}
 Report style: ${style}

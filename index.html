@@ -28,7 +28,6 @@
       overflow:hidden;
     }
 
-    /* Layout: LEFT filters | CENTER ring | RIGHT models+execute */
     .app{
       display:grid;
       grid-template-columns: 300px 520px 1fr;
@@ -154,7 +153,7 @@
       pointer-events:none;
     }
 
-    /* START BUTTON CENTER */
+    /* START BUTTON CENTER (clickable) */
     .ring-center{
       position:absolute;
       inset:30%;
@@ -176,7 +175,13 @@
       font-size:12px;
       letter-spacing:.6px;
       text-transform:uppercase;
+      cursor:pointer;
+      transition:.18s ease;
+      user-select:none;
     }
+    .ring-center:hover{ transform: translateY(-1px); }
+    .ring-center:active{ transform: translateY(1px) scale(.99); }
+
     .ring-center .start-cap{
       width:72%;
       height:72%;
@@ -232,6 +237,7 @@
       padding:6px;
       color:var(--ink);
       font-size:12px;
+      cursor:grab;
     }
     .slot .mini .mini-icon{
       width:34px;height:24px;border-radius:7px;
@@ -262,7 +268,7 @@
     .right-wrap{
       height:100%;
       display:grid;
-      grid-template-rows:auto 1fr auto; /* header, models, execute */
+      grid-template-rows:auto 1fr auto;
       min-height:0;
     }
     .car-grid{
@@ -278,19 +284,30 @@
       border:1px solid var(--ring-line);
       border-radius:14px;
       padding:10px;
-      cursor:grab;
+      cursor:pointer; /* click-to-add */
       user-select:none;
       transition:.18s ease;
       display:flex;
       gap:10px;
       align-items:center;
       box-shadow: var(--shadow-soft);
+      position:relative;
     }
-    .car-card:active{cursor:grabbing}
+    .car-card[draggable="true"]{ cursor:grab; }
     .car-card:hover{
       transform:translateY(-2px);
       border-color:#d6d8dd;
     }
+    .car-card.selected{
+      border-color:#111;
+      box-shadow: inset 0 0 0 1px #111, var(--shadow-soft);
+    }
+    .car-card .hint{
+      position:absolute; right:10px; top:10px;
+      font-size:10px; color:var(--muted); font-weight:700;
+      text-transform:uppercase; letter-spacing:.6px;
+    }
+
     .badge{
       font-size:10px;
       color:#fff;
@@ -315,7 +332,7 @@
     .car-meta .name{font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
     .car-meta .sub{color:var(--muted); font-size:12px;}
 
-    /* Right execute bar (always visible) */
+    /* Right execute bar */
     .execute-bar{
       border-top:1px solid #f0f1f3;
       padding:12px 14px;
@@ -413,14 +430,14 @@
     <header>
       <h2>Comparison Ring</h2>
       <div class="hud">
-        <span>Drop cars on empty slots</span>
+        <span>Drag or click models to add</span>
         <span class="pill"><span id="pickedCount">0</span>/10 picked</span>
       </div>
     </header>
 
     <div class="ring-stage">
       <div class="ring" id="ring">
-        <div class="ring-center" aria-hidden="true">
+        <button class="ring-center" id="startBtn" title="Start analysis">
           <div class="start-cap">
             <div>
               <div class="start-text">Start</div>
@@ -428,7 +445,7 @@
               <div class="stop-text">Stop</div>
             </div>
           </div>
-        </div>
+        </button>
         <!-- slots injected here -->
       </div>
     </div>
@@ -437,9 +454,9 @@
   <!-- RIGHT: Models + Execute -->
   <main class="panel right-wrap">
     <header>
-      <h2 id="modelsTitle">Models</h2>
+      <h2>Models</h2>
       <div class="hud">
-        <span id="modelsDesc">Drag cars into the ring ←</span>
+        <span>Click to add, drag to place</span>
         <span class="pill" id="dragHint">Drag & drop</span>
       </div>
     </header>
@@ -523,11 +540,7 @@ const ALL_CARS = SEGMENTS.flatMap(s =>
 
 /* ------------------ State ------------------ */
 const state = {
-  filters: {
-    segment: "all",
-    vclass: "all",
-    fuel: "all"
-  },
+  filters: { segment: "all", vclass: "all", fuel: "all" },
   picked: Array(10).fill(null)
 };
 
@@ -539,8 +552,10 @@ const pickedCountEl = document.getElementById("pickedCount");
 const ringEl = document.getElementById("ring");
 const classFilterEl = document.getElementById("classFilter");
 const fuelFilterEl = document.getElementById("fuelFilter");
+const startBtn = document.getElementById("startBtn");
+const executeBtn = document.getElementById("executeBtn");
 
-/* ------------------ Filters logic ------------------ */
+/* ------------------ Helpers ------------------ */
 function getFilteredCars(){
   return ALL_CARS.filter(c => {
     if(state.filters.segment !== "all" && c.segment !== state.filters.segment) return false;
@@ -548,6 +563,23 @@ function getFilteredCars(){
     if(state.filters.fuel !== "all" && c.fuel !== state.filters.fuel) return false;
     return true;
   });
+}
+function findCar(id){ return ALL_CARS.find(c=>c.id===id); }
+function isPicked(id){ return state.picked.some(p=>p?.id===id); }
+function firstOpenSlot(){ return state.picked.findIndex(v=>v===null); }
+
+/* Save selection for page 2 */
+function persistSelection(){
+  const chosen = state.picked.filter(Boolean).map(c => ({
+    id:c.id, name:c.name, brand:c.brand, segment:c.segmentName, vclass:c.vclass, fuel:c.fuel
+  }));
+  localStorage.setItem("egaux_selected_models", JSON.stringify(chosen));
+}
+
+/* Navigate to compare page */
+function goToCompare(){
+  persistSelection();
+  window.location.href = "compare.html";
 }
 
 /* ------------------ Render segments ------------------ */
@@ -577,7 +609,7 @@ function renderCars(){
 
   cars.forEach(car=>{
     const card = document.createElement("div");
-    card.className = "car-card";
+    card.className = "car-card" + (isPicked(car.id) ? " selected":"");
     card.draggable = true;
     card.dataset.carId = car.id;
     card.innerHTML = `
@@ -591,7 +623,10 @@ function renderCars(){
           <span class="badge">${car.fuel}</span>
         </div>
       </div>
+      <div class="hint">${isPicked(car.id) ? "Selected" : "Click to add"}</div>
     `;
+
+    // drag
     card.addEventListener("dragstart", (e)=>{
       e.dataTransfer.setData("text/plain", car.id);
       e.dataTransfer.effectAllowed = "move";
@@ -601,6 +636,20 @@ function renderCars(){
       document.getElementById("dragHint").textContent = "Drag & drop";
       clearSlotHighlights();
     });
+
+    // click-to-add/remove
+    card.addEventListener("click", ()=>{
+      if(isPicked(car.id)){
+        // remove if already picked
+        const idx = state.picked.findIndex(p=>p?.id===car.id);
+        if(idx>=0) state.picked[idx]=null;
+      } else {
+        const open = firstOpenSlot();
+        if(open>=0) state.picked[open]=car;
+      }
+      update();
+    });
+
     carGridEl.appendChild(card);
   });
 }
@@ -646,7 +695,7 @@ function createSlots(){
     e.preventDefault();
     clearSlotHighlights();
     const carId = e.dataTransfer.getData("text/plain");
-    const openIndex = state.picked.findIndex(v=>v===null);
+    const openIndex = firstOpenSlot();
     if(openIndex>=0) addCarToSlot(carId, openIndex);
   });
 }
@@ -694,7 +743,7 @@ function clearSlotHighlights(){
 
 /* ------------------ Add/remove logic ------------------ */
 function addCarToSlot(carId, slotIndex){
-  const car = ALL_CARS.find(c=>c.id===carId);
+  const car = findCar(carId);
   if(!car) return;
 
   const already = state.picked.findIndex(c=>c?.id===carId);
@@ -713,7 +762,6 @@ fuelFilterEl.addEventListener("change", e=>{
   state.filters.fuel = e.target.value;
   update();
 });
-
 document.getElementById("clearFilters").onclick = ()=>{
   state.filters.segment="all";
   state.filters.vclass="all";
@@ -723,27 +771,16 @@ document.getElementById("clearFilters").onclick = ()=>{
   update();
 };
 
-/* ------------------ Execute button ------------------ */
-document.getElementById("executeBtn").onclick = ()=>{
-  const chosen = state.picked.filter(Boolean);
-  const style = document.getElementById("reportStyle").value;
-  const name = document.getElementById("filterName").value || "Unnamed filter";
-  alert(
-`POC execute
-
-Filter: ${name}
-Report style: ${style}
-Cars: ${chosen.map(c=>c.name).join(", ") || "none"}
-
-(Backend hook goes here.)`
-  );
-};
+/* ------------------ Start / Execute buttons ------------------ */
+startBtn.addEventListener("click", goToCompare);
+executeBtn.addEventListener("click", goToCompare);
 
 /* ------------------ Update cycle ------------------ */
 function update(){
   renderSegments();
   renderCars();
   renderSlots();
+  persistSelection(); // keep current selection synced
 }
 
 /* ------------------ Boot ------------------ */

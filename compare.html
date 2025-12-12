@@ -3,11 +3,9 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Egaux — Dynamic Comparison</title>
+  <title>Egaux — Comparison</title>
 
-  <!-- CSV parser -->
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-  <!-- Excel export -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js"></script>
 
   <style>
@@ -30,7 +28,6 @@
       height:100vh;
       overflow:hidden;
     }
-
     .wrap{
       display:grid;
       grid-template-rows:auto auto auto 1fr;
@@ -39,7 +36,6 @@
       height:100vh;
       min-height:0;
     }
-
     header{
       background:var(--panel);
       border:1px solid var(--line);
@@ -72,7 +68,7 @@
       min-height:0;
     }
     .toolbar input[type="text"]{
-      padding:8px 10px; font-size:12px; width:280px;
+      padding:8px 10px; font-size:12px; width:320px;
       border:1px solid var(--line); border-radius:9px; background:#fff; font-weight:650;
     }
     details.columns-panel{
@@ -133,10 +129,14 @@
     th.model-col.dragging{ opacity:0.5; }
 
     .headModel{
+      display:grid;
+      gap:6px;
+    }
+    .headTop{
       display:flex; align-items:center; gap:8px;
       min-width:0;
     }
-    .headModel img{
+    .headTop img{
       width:44px; height:30px;
       border-radius:10px;
       border:1px solid var(--line);
@@ -144,22 +144,31 @@
       object-fit:contain;
       flex:0 0 auto;
     }
-    .headModel .t{
+    .headTop .t{
       min-width:0;
     }
-    .headModel .name{
+    .headTop .name{
       font-weight:950;
       white-space:nowrap;
       overflow:hidden;
       text-overflow:ellipsis;
     }
-    .headModel .sub{
+    .headTop .sub{
       font-size:10px;
       color:var(--muted);
       font-weight:750;
       white-space:nowrap;
       overflow:hidden;
       text-overflow:ellipsis;
+    }
+    .trimSel{
+      width:100%;
+      border:1px solid var(--line);
+      border-radius:10px;
+      padding:6px 8px;
+      font-size:11px;
+      font-weight:800;
+      background:#fff;
     }
   </style>
 </head>
@@ -169,11 +178,11 @@
 
   <header>
     <div>
-      <h1>Comparison — CSV Driven</h1>
+      <h1>Comparison — Trim picked here</h1>
       <div class="note" id="sourceNote">Source: Product_data_filled_updated.csv</div>
     </div>
     <div style="display:flex; gap:8px;">
-      <button class="btn secondary" onclick="window.location.href='index.html'">Back to selection</button>
+      <button class="btn secondary" onclick="window.location.href='index.html'">Back</button>
       <button class="btn" id="exportBtn">Download Excel</button>
     </div>
   </header>
@@ -181,9 +190,9 @@
   <div class="toolbar">
     <button class="btn secondary" id="resetBtn">Reset multipliers</button>
     <button class="btn secondary" id="sampleBtn">Sample multipliers</button>
-    <input id="filterInput" type="text" placeholder="Filter fields (type any column name)"/>
+    <input id="filterInput" type="text" placeholder="Filter fields (type any CSV column name)"/>
     <details class="columns-panel">
-      <summary>Models (hide/show + drag headers to reorder)</summary>
+      <summary>Models (hide/show + drag headers)</summary>
       <div id="colList" class="col-list"></div>
     </details>
   </div>
@@ -205,45 +214,42 @@
  *  CONFIG
  *  ============================ */
 const CSV_PATH = "Product_data_filled_updated.csv";
-const SELECTION_KEY = "egaux_selected_ids_v1";
+const SELECTION_KEY = "egaux_selected_groupkeys_v1";
+const META_KEY = "egaux_selection_meta_v1";
 const MULT_KEY = "egaux_field_multipliers_v1";
 const COL_KEY  = "egaux_compare_modelcols_v1";
+const TRIM_KEY = "egaux_active_trim_v1"; // groupKey -> activeRow.__id
 
-// fallback icon (same for all missing images)
 const FALLBACK_ICON = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEYAAAA9CAYAAAAQyx+GAAAAAXNSR0IArs4c6QAAAKFJREFUeF7t2TEKwDAQRNH//1o9qQmQJYl0kM2o8q9bQm2wYkQAAAAAAAAAAAAAAADwq5pY0y0n2k6mG9b0o5w0o8G2o6a9y1y8Qz5l0wQw9c6wX7m4mXq0b6m8v2fY3n8m0o0d9c0p6o3o0o9o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0oAAAAAAAAAAAAAAADgF7wBv7v2a2o3qgAAAABJRU5ErkJggg==";
+const missingImage = new Set();
 
 /** ============================
  *  STATE
  *  ============================ */
 let headers = [];
-let rows = [];           // all csv rows
-let selectedIds = [];    // from localStorage (ordered)
-let selectedRows = [];   // selected row objects in that order
+let rows = [];
+let cols = {};
+let fields = [];
+let groupMap = new Map(); // groupKey -> { key, brand, model, sampleRow, rows[] }
 
-let cols = {};           // detected columns for brand/model etc
-let fields = [];         // table rows = CSV column names
+let selectedGroupKeys = [];
+let selectedGroups = []; // [{key, ...}]
+let activeTrimMap = {};  // groupKey -> row.__id
 
-let multMap = {};        // multipliers per field (column)
-let colState = [];       // visible model columns + order
-let lastTotals = {};     // totals per model key (for export)
+let multMap = {};
+let colState = [];       // [{key:groupKey, visible:true}]
+let lastTotals = {};
 
 /** ============================
  *  UTILS
  *  ============================ */
-function normKey(s){
-  return String(s||"").toLowerCase().replace(/[^a-z0-9]+/g,"");
-}
+function normKey(s){ return String(s||"").toLowerCase().replace(/[^a-z0-9]+/g,""); }
 function resolveColumn(headerList, candidates){
   const map = new Map(headerList.map(h => [normKey(h), h]));
-  for(const c of candidates){
-    const k = normKey(c);
-    if(map.has(k)) return map.get(k);
-  }
+  for(const c of candidates){ const k = normKey(c); if(map.has(k)) return map.get(k); }
   for(const c of candidates){
     const ck = normKey(c);
-    for(const h of headerList){
-      if(normKey(h).includes(ck)) return h;
-    }
+    for(const h of headerList){ if(normKey(h).includes(ck)) return h; }
   }
   return null;
 }
@@ -259,52 +265,44 @@ function detectColumns(headerList){
   };
 }
 function normBrand(s){
-  return String(s||"")
-    .trim().toUpperCase()
-    .replace(/&/g,"AND")
-    .replace(/\s+/g,"-")
-    .replace(/[^A-Z0-9-]/g,"");
+  return String(s||"").trim().toUpperCase()
+    .replace(/&/g,"AND").replace(/\s+/g,"-").replace(/[^A-Z0-9-]/g,"");
 }
 function normModel(s){
-  return String(s||"")
-    .trim().toUpperCase()
-    .replace(/&/g,"AND")
-    .replace(/[\/\\]+/g,"_")
-    .replace(/\s+/g,"_")
-    .replace(/[^A-Z0-9_-]/g,"");
+  return String(s||"").trim().toUpperCase()
+    .replace(/&/g,"AND").replace(/[\/\\]+/g,"_").replace(/\s+/g,"_").replace(/[^A-Z0-9_-]/g,"");
 }
-function imageUrlForRow(r){
-  const b = cols.brand ? r[cols.brand] : "";
-  const m = cols.model ? r[cols.model] : "";
-  const brand = normBrand(b);
-  const model = normModel(m);
-  if(!brand || !model) return FALLBACK_ICON;
-  return `images/${brand}_${model}.png`;
-}
-function rowDisplayName(r){
-  const b = cols.brand ? r[cols.brand] : "";
-  const m = cols.model ? r[cols.model] : "";
-  const v = cols.variant ? r[cols.variant] : "";
-  const y = cols.year ? r[cols.year] : "";
-  const base = [b,m].filter(Boolean).join(" ").trim();
-  const extra = [y,v].filter(Boolean).join(" ").trim();
-  return (base + (extra ? (" " + extra) : "")).trim() || r.__id || "Vehicle";
-}
-function rowSubline(r){
+function groupTitle(g){ return `${g.brand||""} ${g.model||""}`.trim() || g.key; }
+function groupSubline(g){
+  const r = g.sampleRow || {};
   const seg = cols.segment ? r[cols.segment] : "";
   const vc  = cols.vehicleClass ? r[cols.vehicleClass] : "";
   const fuel= cols.fuel ? r[cols.fuel] : "";
   return [seg,vc,fuel].filter(Boolean).join(" • ");
 }
+function imageUrlForGroup(g){
+  if(missingImage.has(g.key)) return FALLBACK_ICON;
+  const brand = normBrand(g.brand);
+  const model = normModel(g.model);
+  if(!brand || !model) return FALLBACK_ICON;
+  return `./images/${brand}_${model}.png`;
+}
+function trimLabel(r){
+  const parts = [];
+  if(cols.year && r[cols.year]) parts.push(String(r[cols.year]));
+  if(cols.variant && r[cols.variant]) parts.push(String(r[cols.variant]));
+  // If you have other trim-ish columns, you can add here
+  const label = parts.join(" — ").trim();
+  return label || `Row ${r.__idx+1}`;
+}
 
-/** numeric parsing for contribution */
+/** numeric parsing */
 function parseNumeric(v){
   if(v == null) return null;
   if(typeof v === "number" && Number.isFinite(v)) return v;
   const s0 = String(v).trim();
   if(!s0 || s0 === "—") return null;
 
-  // range like 536–641 or 536-641
   const rm = s0.match(/(-?\d+(?:[.,]\d+)?)\s*[–-]\s*(-?\d+(?:[.,]\d+)?)/);
   if(rm){
     const a = parseFloat(rm[1].replace(",", "."));
@@ -312,42 +310,29 @@ function parseNumeric(v){
     if(Number.isFinite(a) && Number.isFinite(b)) return (a+b)/2;
   }
 
-  // keep digits, commas, dots, minus
   let s = s0.replace(/[^\d.,\-]/g,"");
   if(!s) return null;
 
-  // decide decimal separator if both present
   const lastDot = s.lastIndexOf(".");
   const lastComma = s.lastIndexOf(",");
   if(lastDot !== -1 && lastComma !== -1){
-    if(lastDot > lastComma){
-      // dot decimal, remove commas
-      s = s.replace(/,/g,"");
-    }else{
-      // comma decimal, remove dots, replace comma with dot
-      s = s.replace(/\./g,"").replace(/,/g,".");
-    }
+    if(lastDot > lastComma) s = s.replace(/,/g,"");
+    else s = s.replace(/\./g,"").replace(/,/g,".");
   }else if(lastComma !== -1 && lastDot === -1){
-    // treat comma as decimal
     s = s.replace(/,/g,".");
-  }else{
-    // dot decimal or integer; leave as-is
   }
-
   const num = parseFloat(s);
   return Number.isFinite(num) ? num : null;
 }
 
-/** local storage helpers */
+/** localStorage */
 function loadJSON(key, fallback){
   try{ const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; }
   catch{ return fallback; }
 }
-function saveJSON(key, val){
-  localStorage.setItem(key, JSON.stringify(val));
-}
+function saveJSON(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
 
-/** multipliers by field */
+/** multipliers */
 function getMultiplier(field){
   const m = multMap[field];
   return (m == null || m === "") ? 0 : Number(m);
@@ -357,14 +342,34 @@ function setMultiplier(field, val){
   saveJSON(MULT_KEY, multMap);
 }
 
-/** model column state */
+/** visible groups based on colState */
 function saveColState(){ saveJSON(COL_KEY, colState); }
-function visibleModels(){
-  return colState.filter(c => c.visible).map(c => selectedRows.find(r => r.__id === c.key));
+function visibleGroups(){
+  return colState.filter(c=>c.visible).map(c=>selectedGroups.find(g=>g.key===c.key)).filter(Boolean);
+}
+
+/** active trim row */
+function getActiveRowForGroup(g){
+  const targetId = activeTrimMap[g.key];
+  if(targetId){
+    const hit = g.rows.find(r => r.__id === targetId);
+    if(hit) return hit;
+  }
+  // default: choose max year if possible, else first
+  if(cols.year){
+    const withYear = g.rows
+      .map(r => ({ r, y: parseInt(String(r[cols.year]||"").replace(/[^\d]/g,""), 10) }))
+      .filter(x => Number.isFinite(x.y));
+    if(withYear.length){
+      withYear.sort((a,b)=>b.y-a.y);
+      return withYear[0].r;
+    }
+  }
+  return g.rows[0] || g.sampleRow;
 }
 
 /** ============================
- *  LOAD + PREP
+ *  LOAD CSV + BUILD GROUPS
  *  ============================ */
 async function loadCSV(){
   const res = await fetch(CSV_PATH, { cache:"no-store" });
@@ -374,7 +379,6 @@ async function loadCSV(){
   headers = parsed.meta?.fields || Object.keys(parsed.data?.[0] || {});
   cols = detectColumns(headers);
 
-  // enrich rows with stable __id
   const idCol = resolveColumn(headers, ["id","vehicle_id","product_id","uuid","key"]);
   rows = (parsed.data || []).map((r, idx) => {
     const b = cols.brand ? r[cols.brand] : "";
@@ -382,55 +386,71 @@ async function loadCSV(){
     const stable = (idCol && r[idCol]) ? String(r[idCol]) : `${normBrand(b)}_${normModel(m)}_${idx}`;
     return { ...r, __id: stable, __idx: idx };
   });
-}
 
-function loadSelection(){
-  const ids = loadJSON(SELECTION_KEY, []);
-  selectedIds = Array.isArray(ids) ? ids : [];
-  if(!selectedIds.length){
-    // fallback: pick first 5 so page isn't empty
-    selectedIds = rows.slice(0,5).map(r => r.__id);
-  }
-
-  // keep selection order
-  const map = new Map(rows.map(r => [r.__id, r]));
-  selectedRows = selectedIds.map(id => map.get(id)).filter(Boolean);
-
-  // model columns (order + visibility)
-  const defaultState = selectedRows.map(r => ({ key:r.__id, visible:true }));
-  colState = loadJSON(COL_KEY, defaultState);
-
-  // ensure any new ones appear
-  for(const r of selectedRows){
-    if(!colState.find(c => c.key === r.__id)) colState.push({ key:r.__id, visible:true });
-  }
-
-  // multipliers
-  multMap = loadJSON(MULT_KEY, {});
-}
-
-function buildFields(){
-  // Every CSV column becomes a "fact row"
-  // We exclude internal columns.
+  // fields = all csv columns except empties
   fields = headers.filter(h => h && !String(h).startsWith("__"));
+
+  // build group map
+  groupMap = new Map();
+  for(const r of rows){
+    const brand = cols.brand ? (r[cols.brand] || "") : "";
+    const model = cols.model ? (r[cols.model] || "") : "";
+    const key = `${normBrand(brand)}_${normModel(model)}`.trim();
+    if(!key || key === "_") continue;
+
+    if(!groupMap.has(key)){
+      groupMap.set(key, { key, brand, model, sampleRow:r, rows:[] });
+    }
+    groupMap.get(key).rows.push(r);
+  }
 }
 
 /** ============================
- *  UI: column panel
+ *  LOAD SELECTION + STATE
  *  ============================ */
+function loadSelection(){
+  selectedGroupKeys = loadJSON(SELECTION_KEY, []);
+  if(!Array.isArray(selectedGroupKeys) || !selectedGroupKeys.length){
+    // fallback: first 3 groups
+    selectedGroupKeys = Array.from(groupMap.keys()).slice(0,3);
+  }
+
+  selectedGroups = selectedGroupKeys.map(k => groupMap.get(k)).filter(Boolean);
+
+  // trim map
+  activeTrimMap = loadJSON(TRIM_KEY, {});
+  if(typeof activeTrimMap !== "object" || !activeTrimMap) activeTrimMap = {};
+
+  // multipliers + column state
+  multMap = loadJSON(MULT_KEY, {});
+  const defaultCols = selectedGroups.map(g => ({ key:g.key, visible:true }));
+  colState = loadJSON(COL_KEY, defaultCols);
+  for(const g of selectedGroups){
+    if(!colState.find(c => c.key === g.key)) colState.push({ key:g.key, visible:true });
+  }
+}
+
+/** ============================
+ *  RENDER UI
+ *  ============================ */
+const thead = document.getElementById("thead");
+const tbody = document.getElementById("tbody");
+const tfoot = document.getElementById("tfoot");
+const topSummary = document.getElementById("topSummary");
+const filterInput = document.getElementById("filterInput");
 const colList = document.getElementById("colList");
+
 function renderColumnPanel(){
   colList.innerHTML = "";
   for(const c of colState){
-    const r = selectedRows.find(x => x.__id === c.key);
-    if(!r) continue;
-    const label = rowDisplayName(r);
+    const g = selectedGroups.find(x => x.key === c.key);
+    if(!g) continue;
 
     const wrap = document.createElement("label");
     wrap.className = "col-item";
     wrap.innerHTML = `
-      <input type="checkbox" data-key="${c.key}" ${c.visible ? "checked":""}/>
-      <span>${label}</span>
+      <input type="checkbox" data-key="${escapeAttr(c.key)}" ${c.visible ? "checked":""}/>
+      <span>${escapeHtml(groupTitle(g))}</span>
     `;
     wrap.querySelector("input").addEventListener("change", e => {
       const key = e.target.dataset.key;
@@ -443,59 +463,78 @@ function renderColumnPanel(){
   }
 }
 
-/** ============================
- *  RENDER TABLE
- *  ============================ */
-const thead = document.getElementById("thead");
-const tbody = document.getElementById("tbody");
-const tfoot = document.getElementById("tfoot");
-const topSummary = document.getElementById("topSummary");
-const filterInput = document.getElementById("filterInput");
-
 function render(){
   renderColumnPanel();
 
+  const visGroups = visibleGroups();
   const filter = filterInput.value.trim().toLowerCase();
-  const vis = visibleModels().filter(Boolean);
 
-  // header
+  // build header
   thead.innerHTML = `
     <tr>
       <th style="width:360px;">Field (CSV column)</th>
       <th style="width:120px;" class="center">Multiplier</th>
-      ${vis.map(r => {
-        const img = imageUrlForRow(r);
-        const name = rowDisplayName(r);
-        const sub = rowSubline(r);
+      ${visGroups.map(g => {
+        const img = imageUrlForGroup(g);
+        const name = groupTitle(g);
+        const sub = groupSubline(g);
+        const activeRow = getActiveRowForGroup(g);
+
+        // options
+        const opts = g.rows.map(r => {
+          const label = trimLabel(r);
+          const selected = (activeRow && r.__id === activeRow.__id) ? "selected" : "";
+          return `<option value="${escapeAttr(r.__id)}" ${selected}>${escapeHtml(label)}</option>`;
+        }).join("");
+
         return `
-          <th class="model-col" draggable="true" data-key="${r.__id}" style="min-width:220px;">
+          <th class="model-col" draggable="true" data-key="${escapeAttr(g.key)}" style="min-width:260px;">
             <div class="headModel">
-              <img src="${img}" onerror="this.src='${FALLBACK_ICON}'" alt="${name}"/>
-              <div class="t">
-                <div class="name">${escapeHtml(name)}</div>
-                <div class="sub">${escapeHtml(sub || "")}</div>
+              <div class="headTop">
+                <img src="${img}" onerror="this.src='${FALLBACK_ICON}'" alt="${escapeAttr(name)}"/>
+                <div class="t">
+                  <div class="name">${escapeHtml(name)}</div>
+                  <div class="sub">${escapeHtml(sub || "")}</div>
+                </div>
               </div>
+              <select class="trimSel" data-group="${escapeAttr(g.key)}" title="Select trim/spec">
+                ${opts}
+              </select>
             </div>
           </th>
         `;
       }).join("")}
     </tr>
   `;
+
   attachHeaderDnD();
+
+  // trim change handlers
+  document.querySelectorAll("select.trimSel").forEach(sel => {
+    sel.addEventListener("change", e => {
+      const groupKey = e.target.dataset.group;
+      const rowId = e.target.value;
+      activeTrimMap[groupKey] = rowId;
+      saveJSON(TRIM_KEY, activeTrimMap);
+      render();
+    });
+  });
 
   // body
   tbody.innerHTML = "";
-  const totals = Object.fromEntries(vis.map(r => [r.__id, 0]));
+  const totals = Object.fromEntries(visGroups.map(g => [g.key, 0]));
 
   for(const field of fields){
     if(filter && !String(field).toLowerCase().includes(filter)) continue;
 
     const mult = getMultiplier(field);
-    const cells = vis.map(r => {
+
+    const cells = visGroups.map(g => {
+      const r = getActiveRowForGroup(g) || {};
       const raw = r[field];
       const num = parseNumeric(raw);
       const contrib = (num != null) ? num * mult : null;
-      if(contrib != null) totals[r.__id] += contrib;
+      if(contrib != null) totals[g.key] += contrib;
 
       const displayVal = (raw == null || String(raw).trim()==="") ? "—" : String(raw);
       const displayContrib = (contrib == null) ? "—" : contrib.toFixed(3);
@@ -521,26 +560,26 @@ function render(){
     tbody.appendChild(tr);
   }
 
-  // footer totals
+  // totals
   tfoot.innerHTML = `
     <tr class="total-row">
       <td colspan="2">Total weighted value</td>
-      ${vis.map(r => `<td class="num">${totals[r.__id].toFixed(3)}</td>`).join("")}
+      ${visGroups.map(g => `<td class="num">${(totals[g.key]||0).toFixed(3)}</td>`).join("")}
     </tr>
   `;
 
   // summary
-  topSummary.innerHTML = vis.map(r => `
+  topSummary.innerHTML = visGroups.map(g => `
     <div class="card">
-      <div class="label">${escapeHtml(rowDisplayName(r))}</div>
-      <div class="value">${totals[r.__id].toFixed(3)}</div>
-      <div class="note">${escapeHtml(rowSubline(r) || r.__id)}</div>
+      <div class="label">${escapeHtml(groupTitle(g))}</div>
+      <div class="value">${(totals[g.key]||0).toFixed(3)}</div>
+      <div class="note">${escapeHtml(trimLabel(getActiveRowForGroup(g)))} </div>
     </div>
   `).join("");
 
   lastTotals = totals;
 
-  // multiplier input handlers
+  // multiplier handlers
   document.querySelectorAll("input.mult").forEach(inp => {
     inp.addEventListener("input", e => {
       const field = e.target.dataset.field;
@@ -591,15 +630,12 @@ function attachHeaderDnD(){
 
 /** ============================
  *  EXCEL EXPORT (AS DISPLAYED)
- *  - One model column per selected model (in current visible order)
- *  - Each cell: raw + newline + contrib
- *  - Respects field filter
  *  ============================ */
 document.getElementById("exportBtn").onclick = () => {
-  const vis = visibleModels().filter(Boolean);
+  const visGroups = visibleGroups();
   const filter = filterInput.value.trim().toLowerCase();
 
-  const headerRow = ["Field", "Multiplier", ...vis.map(r => rowDisplayName(r))];
+  const headerRow = ["Field", "Multiplier", ...visGroups.map(g => groupTitle(g))];
   const aoa = [headerRow];
 
   for(const field of fields){
@@ -608,7 +644,8 @@ document.getElementById("exportBtn").onclick = () => {
     const mult = getMultiplier(field);
     const row = [field, mult];
 
-    for(const r of vis){
+    for(const g of visGroups){
+      const r = getActiveRowForGroup(g) || {};
       const raw = r[field];
       const num = parseNumeric(raw);
       const contrib = (num != null) ? num * mult : null;
@@ -622,22 +659,13 @@ document.getElementById("exportBtn").onclick = () => {
   }
 
   // totals row
-  const totalsRow = ["Total weighted value", "", ...vis.map(r => (lastTotals[r.__id] ?? 0).toFixed(3))];
-  aoa.push(totalsRow);
+  aoa.push(["Total weighted value", "", ...visGroups.map(g => (lastTotals[g.key] ?? 0).toFixed(3))]);
 
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet(aoa);
-
-  // widths
-  ws["!cols"] = [
-    { wch: 34 }, // Field
-    { wch: 12 }, // Multiplier
-    ...vis.map(() => ({ wch: 26 }))
-  ];
-
+  ws["!cols"] = [{wch:34},{wch:12}, ...visGroups.map(()=>({wch:28}))];
   XLSX.utils.book_append_sheet(wb, ws, "Comparison");
-  const filename = `egaux_compare_${new Date().toISOString().slice(0,10)}.xlsx`;
-  XLSX.writeFile(wb, filename);
+  XLSX.writeFile(wb, `egaux_compare_${new Date().toISOString().slice(0,10)}.xlsx`);
 };
 
 /** ============================
@@ -650,7 +678,6 @@ document.getElementById("resetBtn").onclick = () => {
 };
 
 document.getElementById("sampleBtn").onclick = () => {
-  // sample multipliers on a few likely columns (if present)
   const sample = {};
   for(const h of headers){
     const k = normKey(h);
@@ -668,7 +695,7 @@ document.getElementById("sampleBtn").onclick = () => {
 filterInput.addEventListener("input", render);
 
 /** ============================
- *  SAFETY: escape helpers
+ *  SAFETY: escapes
  *  ============================ */
 function escapeHtml(s){
   return String(s ?? "")
@@ -689,14 +716,10 @@ function escapeAttr(s){
   try{
     await loadCSV();
     loadSelection();
-    buildFields();
     render();
   }catch(err){
     console.error(err);
-    alert(
-      "Could not load Product_data_filled_updated.csv.\n" +
-      "Make sure it is deployed next to compare.html."
-    );
+    alert("Could not load Product_data_filled_updated.csv. Ensure it is deployed next to compare.html.");
   }
 })();
 </script>

@@ -1,484 +1,474 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Egaux Car Segment Comparator (POC)</title>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Egaux — Vehicle Selection</title>
+
+  <!-- CSV parser -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
   <style>
     :root{
-      --bg: #f7f7f8;
-      --panel: #ffffff;
-      --panel-2:#fafafa;
-      --ink: #0b0c0f;
+      --bg:#ffffff;
+      --panel:#ffffff;
+      --ink:#0b0c0f;
       --muted:#6f7685;
-      --danger:#111111;
-      --ring:#ffffff;
-      --ring-line:#e6e7ea;
-      --shadow: 0 10px 30px rgba(16,18,25,.08);
-      --shadow-soft: 0 6px 16px rgba(16,18,25,.06);
+      --line:#e6e7ea;
+      --shadow:0 18px 50px rgba(0,0,0,.06);
+      --shadow-soft:0 10px 24px rgba(0,0,0,.06);
+      --accent:#111;
+      --pill:#0b0c0f;
+      --pill-ink:#fff;
     }
-
-    *{box-sizing:border-box}
+    *{ box-sizing:border-box; }
     body{
       margin:0;
-      background: var(--bg);
+      font-family: system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+      background:var(--bg);
       color:var(--ink);
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
       height:100vh;
       overflow:hidden;
     }
 
     .app{
       display:grid;
-      grid-template-columns: 300px 520px 1fr;
+      grid-template-columns: 280px 1fr 520px;
       gap:14px;
       padding:14px;
       height:100vh;
     }
-
     .panel{
-      background: var(--panel);
-      border:1px solid var(--ring-line);
+      background:var(--panel);
+      border:1px solid var(--line);
       border-radius:18px;
-      box-shadow: var(--shadow);
-      min-height:0;
+      box-shadow:var(--shadow);
       overflow:hidden;
-    }
-    .panel h2{
-      margin:0 0 10px 0;
-      font-weight:700;
-      letter-spacing:.2px;
+      min-height:0;
     }
     .panel header{
-      padding:14px 14px 0 14px;
-      border-bottom: 1px solid #f0f1f3;
-    }
-    .panel .content{
-      padding:14px;
-      overflow:auto;
-      height:calc(100% - 60px);
-    }
-
-    /* LEFT: Filters */
-    .filters{
+      padding:14px 14px 12px;
+      border-bottom:1px solid var(--line);
       display:flex;
-      flex-direction:column;
+      align-items:flex-end;
+      justify-content:space-between;
       gap:12px;
     }
-    .filter-block{
-      background: var(--panel-2);
-      border:1px solid var(--ring-line);
-      border-radius:14px;
-      padding:10px;
-      display:flex;
-      flex-direction:column;
-      gap:8px;
+    .panel header .title{
+      font-weight:900;
+      letter-spacing:.2px;
     }
-    .filter-title{
-      font-weight:800;
+    .panel header .sub{
       font-size:12px;
-      letter-spacing:.6px;
+      color:var(--muted);
+      font-weight:650;
+      margin-top:4px;
+    }
+    .content{
+      padding:14px;
+      height:calc(100% - 58px);
+      overflow:auto;
+    }
+
+    /* Filters */
+    .kpi{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:10px;
+      font-size:12px;
+      color:var(--muted);
+      font-weight:650;
+    }
+    .badge{
+      background:#f2f3f5;
+      border:1px solid var(--line);
+      border-radius:999px;
+      padding:4px 10px;
+      font-weight:800;
+      color:#111;
+      font-size:12px;
+    }
+    .group{ margin:12px 0 18px; }
+    .label{
+      font-weight:900;
+      font-size:12px;
+      letter-spacing:.12em;
       color:#111;
       text-transform:uppercase;
+      margin-bottom:10px;
     }
-    .seg-btn{
-      display:flex; align-items:center; justify-content:space-between;
-      width:100%;
-      padding:10px 10px;
-      background:#fff;
-      border:1px solid var(--ring-line);
-      color:var(--ink);
-      border-radius:10px;
+    .seglist{ display:flex; flex-direction:column; gap:8px; }
+    .segitem{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:10px 12px;
       cursor:pointer;
-      transition:.18s ease;
-      font-weight:600;
+      background:#fff;
+      box-shadow:var(--shadow-soft);
+      font-weight:850;
     }
-    .seg-btn small{color:var(--muted); font-weight:500;}
-    .seg-btn:hover{transform:translateY(-1px); box-shadow:var(--shadow-soft);}
-    .seg-btn.active{
+    .segitem small{
+      font-weight:800;
+      color:var(--muted);
+    }
+    .segitem.active{
       border-color:#111;
       box-shadow: inset 0 0 0 1px #111;
     }
-
-    .select{
+    select, input{
       width:100%;
       padding:10px 12px;
-      background:#fff;
-      border:1px solid var(--ring-line);
-      border-radius:10px;
-      color:var(--ink);
-      font-weight:600;
-    }
-    .clear-btn{
-      padding:10px 12px;
-      background:#111;
-      color:#fff;
-      border:0;
-      border-radius:10px;
-      font-weight:800;
-      cursor:pointer;
-      transition:.18s ease;
-    }
-    .clear-btn:hover{transform:translateY(-1px);}
-
-    /* CENTER: Ring */
-    .ring-wrap{
-      height:100%;
-      display:grid;
-      grid-template-rows: auto 1fr;
-      gap:10px;
-    }
-    .ring-stage{
-      position:relative;
-      height:100%;
-      display:grid;
-      place-items:center;
-      padding:8px;
-      overflow:hidden;
-    }
-    .ring{
-      position:relative;
-      width:420px;
-      aspect-ratio:1/1;
-      border-radius:999px;
-      background: var(--ring);
-      border: 1px solid var(--ring-line);
-      box-shadow: 0 18px 60px rgba(16,18,25,.10);
-    }
-    .ring::after{
-      content:"";
-      position:absolute; inset:7%;
-      border-radius:999px;
-      border:1px dashed #e3e4e8;
-      pointer-events:none;
-    }
-
-    /* START BUTTON CENTER (clickable) */
-    .ring-center{
-      position:absolute;
-      inset:30%;
-      border-radius:999px;
-      display:grid;
-      place-items:center;
-      text-align:center;
-      padding:18px;
-
-      background:
-        radial-gradient(circle at 30% 25%, #ffffff 0%, #f3f4f6 35%, #d9dbe0 70%, #c9ccd3 100%);
-      border:1px solid #cfd2d9;
-      box-shadow:
-        inset 0 10px 18px rgba(255,255,255,.9),
-        inset 0 -10px 18px rgba(0,0,0,.08),
-        0 18px 50px rgba(16,18,25,.12);
-
-      color:#111;
-      font-size:12px;
-      letter-spacing:.6px;
-      text-transform:uppercase;
-      cursor:pointer;
-      transition:.18s ease;
-      user-select:none;
-    }
-    .ring-center:hover{ transform: translateY(-1px); }
-    .ring-center:active{ transform: translateY(1px) scale(.99); }
-
-    .ring-center .start-cap{
-      width:72%;
-      height:72%;
-      border-radius:999px;
-      display:grid;
-      place-items:center;
-      background:
-        radial-gradient(circle at 35% 30%, #ffe2b6 0%, #f3a74f 45%, #d57b1f 70%, #b85f12 100%);
-      border:1px solid rgba(0,0,0,.12);
-      box-shadow:
-        inset 0 8px 14px rgba(255,255,255,.35),
-        inset 0 -10px 16px rgba(0,0,0,.25),
-        0 8px 18px rgba(0,0,0,.12);
-    }
-    .ring-center .start-text{
-      font-weight:900;
-      font-size:18px;
-      letter-spacing:1px;
-    }
-    .ring-center .engine-text{
-      font-weight:700;
-      font-size:10px;
-      opacity:.9;
-      margin:4px 0;
-    }
-    .ring-center .stop-text{
-      font-weight:900;
-      font-size:14px;
-      letter-spacing:1px;
-      margin-top:2px;
-    }
-
-    .slot{
-      position:absolute;
-      width:94px; height:60px;
       border-radius:12px;
+      border:1px solid var(--line);
+      font-weight:750;
       background:#fff;
-      border:1px solid var(--ring-line);
-      display:grid; place-items:center;
-      color:var(--muted);
-      font-size:11px;
-      transition:.18s ease;
-      box-shadow: var(--shadow-soft);
-    }
-    .slot.highlight{
-      border-color:#111;
-      outline:3px solid rgba(17,17,17,.06);
-      transform:scale(1.03);
-    }
-    .slot .mini{
-      width:100%;height:100%;
-      display:flex;align-items:center;gap:6px;
-      padding:6px;
-      color:var(--ink);
-      font-size:12px;
-      cursor:grab;
-    }
-    .slot .mini .mini-icon{
-      width:34px;height:24px;border-radius:7px;
-      background:#f3f4f6;
-      display:grid;place-items:center;font-size:13px;
-      border:1px solid #e7e8ec;
-      flex:0 0 auto;
-    }
-    .slot .mini .mini-name{
-      font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-      max-width:90px;
-    }
-    .slot .remove{
-      position:absolute; top:-7px; right:-7px;
-      width:20px;height:20px;border-radius:999px;
-      background:#111;
-      color:white; display:grid;place-items:center;
-      font-size:12px;font-weight:900; cursor:pointer;
-      box-shadow:0 6px 14px rgba(0,0,0,.20);
-    }
-    .pop{ animation:pop .30s ease; }
-    @keyframes pop{
-      0%{transform:scale(.9); opacity:.4}
-      100%{transform:scale(1); opacity:1}
-    }
-
-    /* RIGHT: Models grid */
-    .right-wrap{
-      height:100%;
-      display:grid;
-      grid-template-rows:auto 1fr auto;
-      min-height:0;
-    }
-    .car-grid{
-      display:grid;
-      grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-      gap:10px;
-      padding:14px;
-      overflow:auto;
-      min-height:0;
-    }
-    .car-card{
-      background:#fff;
-      border:1px solid var(--ring-line);
-      border-radius:14px;
-      padding:10px;
-      cursor:pointer; /* click-to-add */
-      user-select:none;
-      transition:.18s ease;
-      display:flex;
-      gap:10px;
-      align-items:center;
-      box-shadow: var(--shadow-soft);
-      position:relative;
-    }
-    .car-card[draggable="true"]{ cursor:grab; }
-    .car-card:hover{
-      transform:translateY(-2px);
-      border-color:#d6d8dd;
-    }
-    .car-card.selected{
-      border-color:#111;
-      box-shadow: inset 0 0 0 1px #111, var(--shadow-soft);
-    }
-    .car-card .hint{
-      position:absolute; right:10px; top:10px;
-      font-size:10px; color:var(--muted); font-weight:700;
-      text-transform:uppercase; letter-spacing:.6px;
-    }
-
-    .badge{
-      font-size:10px;
-      color:#fff;
-      background:#111;
-      padding:3px 7px;
-      border-radius:999px;
-      font-weight:800;
-      letter-spacing:.3px;
-      display:inline-block;
-      margin-right:4px;
-      margin-top:2px;
-    }
-    .car-icon{
-      width:64px;height:42px;border-radius:10px;
-      background: #f3f4f6;
-      display:grid;place-items:center;
-      font-size:20px;
-      border:1px solid #e7e8ec;
-      flex:0 0 auto;
-    }
-    .car-meta{display:flex;flex-direction:column;gap:3px;min-width:0;}
-    .car-meta .name{font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-    .car-meta .sub{color:var(--muted); font-size:12px;}
-
-    /* Right execute bar */
-    .execute-bar{
-      border-top:1px solid #f0f1f3;
-      padding:12px 14px;
-      background:#fff;
-      position:sticky;
-      bottom:0;
-      display:grid;
-      gap:8px;
-    }
-    .input{
-      width:100%;
-      padding:10px 12px;
-      background:#fff;
-      border:1px solid var(--ring-line);
-      border-radius:10px;
-      font-weight:600;
+      box-shadow:var(--shadow-soft);
+      outline:none;
     }
     .btn{
       width:100%;
-      border:0;
-      padding:12px;
+      padding:12px 14px;
       border-radius:12px;
-      font-weight:800;
-      letter-spacing:.5px;
-      cursor:pointer;
-      background: #111;
+      border:0;
+      background:#111;
       color:#fff;
-      box-shadow: var(--shadow);
-      transition:.18s ease;
+      font-weight:950;
+      cursor:pointer;
+      box-shadow:var(--shadow-soft);
     }
-    .btn:hover{transform:translateY(-1px);}
-    .btn:active{transform:translateY(1px);}
-
-    .hud{
-      display:flex; justify-content:space-between; align-items:center;
-      font-size:12px; color:var(--muted);
-      padding:0 14px 10px;
-    }
-    .pill{
-      padding:4px 8px; border-radius:999px; background:#fff;
-      border:1px solid var(--ring-line); color:var(--ink); font-weight:700;
+    .btn.secondary{
+      background:#fff;
+      color:#111;
+      border:1px solid var(--line);
+      font-weight:900;
     }
 
-    ::-webkit-scrollbar{width:10px;height:10px}
-    ::-webkit-scrollbar-thumb{background:#d9dbe0;border-radius:999px}
-    ::-webkit-scrollbar-track{background:transparent}
+    /* Center ring */
+    .ringWrap{
+      height:100%;
+      display:grid;
+      place-items:center;
+      padding:14px;
+    }
+    .ringCard{
+      width:min(520px, 100%);
+      height:min(520px, 100%);
+      border-radius:18px;
+      border:1px solid var(--line);
+      box-shadow:var(--shadow);
+      background:#fff;
+      position:relative;
+      overflow:hidden;
+    }
+    .ringHeader{
+      position:absolute;
+      left:14px;
+      top:14px;
+      right:14px;
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-end;
+      gap:10px;
+      z-index:5;
+    }
+    .ringHeader .h{
+      font-weight:950;
+    }
+    .ringHeader .s{
+      font-size:12px;
+      color:var(--muted);
+      font-weight:650;
+      margin-top:4px;
+    }
+
+    .ringStage{
+      position:absolute;
+      inset:0;
+      display:grid;
+      place-items:center;
+    }
+    .ring{
+      width:78%;
+      height:78%;
+      border-radius:999px;
+      border:1px solid var(--line);
+      background:
+        radial-gradient(circle at center, rgba(0,0,0,0.02), rgba(0,0,0,0) 60%),
+        radial-gradient(circle at center, #fff, #fbfbfc);
+      box-shadow: inset 0 0 0 12px rgba(0,0,0,0.015);
+      position:relative;
+    }
+    .slot{
+      position:absolute;
+      width:170px;
+      height:56px;
+      border-radius:14px;
+      border:1px dashed #d7d9de;
+      background:#fff;
+      box-shadow:var(--shadow-soft);
+      transform:translate(-50%,-50%);
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:8px 10px;
+      overflow:hidden;
+    }
+    .slot.empty{
+      background: #fcfcfd;
+      color:#a0a6b3;
+      font-weight:800;
+      justify-content:center;
+    }
+    .slot .thumb{
+      width:44px;height:32px;
+      border-radius:10px;
+      border:1px solid var(--line);
+      background:#f3f4f6;
+      display:grid;
+      place-items:center;
+      flex:0 0 auto;
+      overflow:hidden;
+    }
+    .slot img{ max-width:100%; max-height:100%; }
+    .slot .name{
+      font-weight:900;
+      font-size:12px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      flex:1;
+    }
+    .slot .x{
+      width:22px;height:22px;
+      border-radius:999px;
+      border:1px solid var(--line);
+      background:#fff;
+      color:#111;
+      display:grid;
+      place-items:center;
+      font-weight:950;
+      cursor:pointer;
+      flex:0 0 auto;
+    }
+    .slot.over{
+      border-color:#111;
+      box-shadow: inset 0 0 0 1px #111, var(--shadow-soft);
+    }
+
+    .startBtn{
+      position:absolute;
+      width:140px;height:140px;
+      border-radius:999px;
+      border:1px solid #cfcfcf;
+      background:
+        radial-gradient(circle at 35% 30%, #ffe2b6, #d57b1f);
+      font-weight:950;
+      letter-spacing:1px;
+      cursor:pointer;
+      box-shadow: inset 0 8px 14px rgba(255,255,255,.35),
+                  0 14px 40px rgba(0,0,0,.15);
+      display:grid;
+      place-items:center;
+      text-align:center;
+      user-select:none;
+    }
+    .startBtn span{
+      display:block;
+      font-size:22px;
+      color:#111;
+      line-height:1.05;
+    }
+    .startBtn em{
+      display:block;
+      font-style:normal;
+      font-weight:900;
+      font-size:10px;
+      opacity:.8;
+      margin-top:2px;
+      letter-spacing:.18em;
+    }
+
+    /* Models grid */
+    .grid{
+      display:grid;
+      grid-template-columns:repeat(auto-fill,minmax(230px,1fr));
+      gap:12px;
+      padding-bottom:10px;
+    }
+    .card{
+      border:1px solid var(--line);
+      border-radius:14px;
+      background:#fff;
+      box-shadow:var(--shadow-soft);
+      padding:10px;
+      display:flex;
+      gap:10px;
+      cursor:pointer;
+      transition:.15s ease;
+    }
+    .card:hover{ transform:translateY(-2px); }
+    .card.selected{
+      border-color:#111;
+      box-shadow: inset 0 0 0 1px #111, var(--shadow-soft);
+    }
+    .card .thumb{
+      width:66px;height:44px;
+      border-radius:12px;
+      border:1px solid var(--line);
+      background:#f3f4f6;
+      display:grid;
+      place-items:center;
+      overflow:hidden;
+      flex:0 0 auto;
+    }
+    .card .thumb img{ max-width:100%; max-height:100%; }
+    .meta{ min-width:0; flex:1; }
+    .meta .name{
+      font-weight:950;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .meta .sub{
+      font-size:12px;
+      color:var(--muted);
+      font-weight:650;
+      margin-top:2px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .tags{
+      display:flex;
+      gap:6px;
+      flex-wrap:wrap;
+      margin-top:6px;
+    }
+    .tag{
+      background:var(--pill);
+      color:var(--pill-ink);
+      font-size:10px;
+      font-weight:900;
+      padding:3px 8px;
+      border-radius:999px;
+      letter-spacing:.02em;
+    }
+
+    .execBar{
+      padding:12px 14px;
+      border-top:1px solid var(--line);
+      background:#fff;
+    }
+    .field{ margin-top:10px; }
+    .field label{
+      display:block;
+      font-size:12px;
+      color:var(--muted);
+      font-weight:750;
+      margin:0 0 6px;
+    }
   </style>
 </head>
+
 <body>
 <div class="app">
 
-  <!-- LEFT: Filters -->
+  <!-- Filters -->
   <aside class="panel">
     <header>
-      <h2>Filters</h2>
-      <div class="hud">
-        <span>All models visible by default</span>
-        <span class="pill" id="visibleCount">0 shown</span>
+      <div>
+        <div class="title">Filters</div>
+        <div class="sub">All models visible by default</div>
       </div>
+      <div class="badge" id="shownBadge">0 shown</div>
     </header>
-    <div class="content filters">
-
-      <div class="filter-block">
-        <div class="filter-title">Segment</div>
-        <div id="segments" class="segments"></div>
+    <div class="content">
+      <div class="group">
+        <div class="label">Segment</div>
+        <div class="seglist" id="segmentList"></div>
       </div>
 
-      <div class="filter-block">
-        <div class="filter-title">Vehicle class</div>
-        <select class="select" id="classFilter">
-          <option value="all">All (PCV + LCV)</option>
+      <div class="group">
+        <div class="label">Vehicle class</div>
+        <select id="vehicleClassSelect">
+          <option value="">All (PCV + LCV)</option>
           <option value="PCV">PCV</option>
           <option value="LCV">LCV</option>
         </select>
       </div>
 
-      <div class="filter-block">
-        <div class="filter-title">Fuel type</div>
-        <select class="select" id="fuelFilter">
-          <option value="all">All fuels</option>
-          <option value="ICE">ICE</option>
-          <option value="HEV">HEV</option>
-          <option value="PHEV">PHEV</option>
-          <option value="BEV">BEV</option>
-          <option value="FCEV">FCEV</option>
+      <div class="group">
+        <div class="label">Fuel type</div>
+        <select id="fuelSelect">
+          <option value="">All fuels</option>
         </select>
       </div>
 
-      <button class="clear-btn" id="clearFilters">Clear filters</button>
+      <button class="btn secondary" id="clearFiltersBtn">Clear filters</button>
     </div>
   </aside>
 
-  <!-- CENTER: Ring -->
-  <section class="panel ring-wrap">
-    <header>
-      <h2>Comparison Ring</h2>
-      <div class="hud">
-        <span>Drag or click models to add</span>
-        <span class="pill"><span id="pickedCount">0</span>/10 picked</span>
+  <!-- Ring -->
+  <section class="panel ringWrap">
+    <div class="ringCard">
+      <div class="ringHeader">
+        <div>
+          <div class="h">Comparison Ring</div>
+          <div class="s">Click or drag models to add</div>
+        </div>
+        <div class="badge" id="pickedBadge">0/10 picked</div>
       </div>
-    </header>
 
-    <div class="ring-stage">
-      <div class="ring" id="ring">
-        <button class="ring-center" id="startBtn" title="Start analysis">
-          <div class="start-cap">
+      <div class="ringStage">
+        <div class="ring" id="ring">
+          <button class="startBtn" id="startBtn" title="Go to comparison">
             <div>
-              <div class="start-text">Start</div>
-              <div class="engine-text">Engine</div>
-              <div class="stop-text">Stop</div>
+              <span>START</span>
+              <em>EXECUTE</em>
             </div>
-          </div>
-        </button>
-        <!-- slots injected here -->
+          </button>
+          <!-- slots injected by JS -->
+        </div>
       </div>
     </div>
   </section>
 
-  <!-- RIGHT: Models + Execute -->
-  <main class="panel right-wrap">
+  <!-- Models -->
+  <main class="panel">
     <header>
-      <h2>Models</h2>
-      <div class="hud">
-        <span>Click to add, drag to place</span>
-        <span class="pill" id="dragHint">Drag & drop</span>
+      <div>
+        <div class="title">Models</div>
+        <div class="sub">Click to add, drag to place</div>
       </div>
+      <div class="badge" id="dataBadge">CSV</div>
     </header>
 
-    <div class="car-grid" id="carGrid"></div>
+    <div class="content">
+      <div class="grid" id="grid"></div>
+    </div>
 
-    <div class="execute-bar">
-      <label style="font-size:12px;color:var(--muted);font-weight:700;">Report style</label>
-      <select class="select" id="reportStyle">
-        <option>Strategic overview</option>
-        <option>Tactical pricing deep-dive</option>
-        <option>Competitive delta snapshot</option>
-        <option>Custom…</option>
-      </select>
+    <div class="execBar">
+      <div class="field">
+        <label>Report style</label>
+        <select id="reportStyle">
+          <option>Strategic overview</option>
+          <option>Tactical pricing</option>
+          <option>Spec deep dive</option>
+        </select>
+      </div>
 
-      <label style="font-size:12px;color:var(--muted);font-weight:700;">Notes / filter name</label>
-      <input class="input" id="filterName" placeholder="e.g., Nordic EV comp set Q1" />
+      <div class="field">
+        <label>Notes / filter name</label>
+        <input id="notes" placeholder="e.g., Nordic EV comp set Q1"/>
+      </div>
 
-      <button class="btn" id="executeBtn">Execute analysis</button>
-
-      <div style="font-size:12px;color:var(--muted);line-height:1.4">
-        POC only — backend hook comes later.
+      <div class="field">
+        <button class="btn" id="executeBtn">Execute analysis</button>
       </div>
     </div>
   </main>
@@ -486,307 +476,498 @@
 </div>
 
 <script>
-/* ------------------ Fake data w/ class + fuel ------------------ */
-const SEGMENTS = [
-  {
-    id:"suv",
-    name:"SUV",
-    cars:[
-      {id:"suv-1", name:"Volto Terra X", brand:"Volto", icon:"🚙", vclass:"PCV", fuel:"BEV"},
-      {id:"suv-2", name:"NordicTrail 7", brand:"Skandia", icon:"🛻", vclass:"PCV", fuel:"ICE"},
-      {id:"suv-3", name:"Auron Apex", brand:"Auron", icon:"🚘", vclass:"PCV", fuel:"PHEV"},
-      {id:"suv-4", name:"Elektra Roam", brand:"Elektra", icon:"⚡", vclass:"PCV", fuel:"BEV"},
-      {id:"suv-5", name:"Gravix Ridge", brand:"Gravix", icon:"⛰️", vclass:"PCV", fuel:"HEV"},
-      {id:"suv-6", name:"Komet Atlas", brand:"Komet", icon:"🌌", vclass:"PCV", fuel:"ICE"}
-    ]
-  },
-  {
-    id:"sedan",
-    name:"Sedan",
-    cars:[
-      {id:"sed-1", name:"Lumen S4", brand:"Lumen", icon:"🚗", vclass:"PCV", fuel:"ICE"},
-      {id:"sed-2", name:"Auron Linea", brand:"Auron", icon:"✨", vclass:"PCV", fuel:"HEV"},
-      {id:"sed-3", name:"Volto Arc", brand:"Volto", icon:"⚡", vclass:"PCV", fuel:"BEV"},
-      {id:"sed-4", name:"Skandia Fjord", brand:"Skandia", icon:"🌊", vclass:"PCV", fuel:"PHEV"},
-      {id:"sed-5", name:"Komet Silkway", brand:"Komet", icon:"🪐", vclass:"PCV", fuel:"ICE"}
-    ]
-  },
-  {
-    id:"pickup",
-    name:"Pick-up",
-    cars:[
-      {id:"pu-1", name:"Gravix HaulPro", brand:"Gravix", icon:"🛻", vclass:"LCV", fuel:"ICE"},
-      {id:"pu-2", name:"NordicTrail Cargo", brand:"Skandia", icon:"🧰", vclass:"LCV", fuel:"ICE"},
-      {id:"pu-3", name:"Komet Ranger", brand:"Komet", icon:"🏕️", vclass:"LCV", fuel:"PHEV"},
-      {id:"pu-4", name:"Volto Forge", brand:"Volto", icon:"🔧", vclass:"LCV", fuel:"BEV"}
-    ]
-  },
-  {
-    id:"lux",
-    name:"Luxury",
-    cars:[
-      {id:"lx-1", name:"Auron Halo GT", brand:"Auron", icon:"👑", vclass:"PCV", fuel:"ICE"},
-      {id:"lx-2", name:"Lumen Noir", brand:"Lumen", icon:"🖤", vclass:"PCV", fuel:"HEV"},
-      {id:"lx-3", name:"Volto Echelon", brand:"Volto", icon:"💎", vclass:"PCV", fuel:"BEV"},
-      {id:"lx-4", name:"Komet Zenith", brand:"Komet", icon:"🏔️", vclass:"PCV", fuel:"PHEV"},
-      {id:"lx-5", name:"Skandia Aurora", brand:"Skandia", icon:"🌅", vclass:"PCV", fuel:"ICE"}
-    ]
+/** ============================
+ *  CONFIG
+ *  ============================ */
+const CSV_PATH = "Product_data_filled_updated.csv";
+const COMPARE_PAGE = "compare.html"; // if you rename file -> update this
+const SLOT_COUNT = 10;
+
+// fallback icon (single icon for all missing car images)
+const FALLBACK_ICON = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEYAAAA9CAYAAAAQyx+GAAAAAXNSR0IArs4c6QAAAKFJREFUeF7t2TEKwDAQRNH//1o9qQmQJYl0kM2o8q9bQm2wYkQAAAAAAAAAAAAAAADwq5pY0y0n2k6mG9b0o5w0o8G2o6a9y1y8Qz5l0wQw9c6wX7m4mXq0b6m8v2fY3n8m0o0d9c0p6o3o0o9o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0oAAAAAAAAAAAAAAADgF7wBv7v2a2o3qgAAAABJRU5ErkJggg==";
+
+/** ============================
+ *  STATE
+ *  ============================ */
+let rawRows = [];
+let rows = []; // enriched rows with __id etc
+let headers = [];
+let cols = {}; // detected columns
+let filterState = { segment: "", vehicleClass: "", fuel: "" };
+let slots = Array.from({length:SLOT_COUNT}, () => null); // holds row.__id
+
+/** ============================
+ *  UTILS
+ *  ============================ */
+function normKey(s){
+  return String(s||"")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g,"");
+}
+function resolveColumn(headerList, candidates){
+  const map = new Map(headerList.map(h => [normKey(h), h]));
+  for(const c of candidates){
+    const k = normKey(c);
+    if(map.has(k)) return map.get(k);
   }
-];
+  // fuzzy: contains
+  for(const c of candidates){
+    const ck = normKey(c);
+    for(const h of headerList){
+      if(normKey(h).includes(ck)) return h;
+    }
+  }
+  return null;
+}
+function detectColumns(headerList){
+  return {
+    brand: resolveColumn(headerList, ["brand","make","manufacturer","oem","marque","märke"]),
+    model: resolveColumn(headerList, ["model","carline","vehicle","name","modelname"]),
+    variant: resolveColumn(headerList, ["variant","trim","version","derivative","grade"]),
+    year: resolveColumn(headerList, ["year","modelyear","my"]),
+    segment: resolveColumn(headerList, ["segment","bodysegment","segmentgroup","bodystyle","body"]),
+    vehicleClass: resolveColumn(headerList, ["vehicleclass","pcv_lcv","pcv/lcv","class","vehicletype"]),
+    fuel: resolveColumn(headerList, ["fuel","fueltype","powertrain","energy","drivetrain"])
+  };
+}
+function normBrand(s){
+  return String(s||"")
+    .trim()
+    .toUpperCase()
+    .replace(/&/g,"AND")
+    .replace(/\s+/g,"-")
+    .replace(/[^A-Z0-9-]/g,"");
+}
+function normModel(s){
+  return String(s||"")
+    .trim()
+    .toUpperCase()
+    .replace(/&/g,"AND")
+    .replace(/[\/\\]+/g,"_")
+    .replace(/\s+/g,"_")
+    .replace(/[^A-Z0-9_-]/g,"");
+}
+function rowDisplayName(r){
+  const b = cols.brand ? r[cols.brand] : "";
+  const m = cols.model ? r[cols.model] : "";
+  const v = cols.variant ? r[cols.variant] : "";
+  const y = cols.year ? r[cols.year] : "";
+  const base = [b,m].filter(Boolean).join(" ").trim();
+  const extra = [y,v].filter(Boolean).join(" ").trim();
+  return (base + (extra ? (" " + extra) : "")).trim() || `Vehicle ${r.__idx+1}`;
+}
+function rowSubline(r){
+  const seg = cols.segment ? r[cols.segment] : "";
+  const vc  = cols.vehicleClass ? r[cols.vehicleClass] : "";
+  const fuel= cols.fuel ? r[cols.fuel] : "";
+  return [seg,vc,fuel].filter(Boolean).join(" • ");
+}
+function imageUrlForRow(r){
+  const b = cols.brand ? r[cols.brand] : "";
+  const m = cols.model ? r[cols.model] : "";
+  const brand = normBrand(b);
+  const model = normModel(m);
+  if(!brand || !model) return FALLBACK_ICON;
+  return `images/${brand}_${model}.png`;
+}
+function selectedIds(){
+  return slots.filter(Boolean);
+}
+function isSelected(id){
+  return slots.includes(id);
+}
+function firstEmptySlot(){
+  return slots.findIndex(x => !x);
+}
+function removeId(id){
+  const idx = slots.findIndex(x => x === id);
+  if(idx >= 0){
+    slots[idx] = null;
+    persistSelection();
+    renderAll();
+  }
+}
+function placeInSlot(slotIndex, id){
+  if(!id) return;
+  // if already placed elsewhere, move it
+  const from = slots.findIndex(x => x === id);
+  if(from >= 0) slots[from] = null;
 
-const ALL_CARS = SEGMENTS.flatMap(s =>
-  s.cars.map(c => ({...c, segment:s.id, segmentName:s.name}))
-);
+  slots[slotIndex] = id;
+  persistSelection();
+  renderAll();
+}
+function addToFirstEmpty(id){
+  const i = firstEmptySlot();
+  if(i < 0){
+    alert(`Ring is full (${SLOT_COUNT}). Remove one first.`);
+    return;
+  }
+  placeInSlot(i, id);
+}
+function toggleSelect(id){
+  if(isSelected(id)) removeId(id);
+  else addToFirstEmpty(id);
+}
 
-/* ------------------ State ------------------ */
-const state = {
-  filters: { segment: "all", vclass: "all", fuel: "all" },
-  picked: Array(10).fill(null)
-};
+/** ============================
+ *  CSV LOADER
+ *  ============================ */
+async function loadCSV(){
+  const res = await fetch(CSV_PATH, { cache:"no-store" });
+  if(!res.ok) throw new Error(`Failed to load ${CSV_PATH} (${res.status})`);
+  const text = await res.text();
+  const parsed = Papa.parse(text, { header:true, skipEmptyLines:true });
+  if(parsed.errors?.length) console.warn("CSV parse warnings:", parsed.errors);
+  rawRows = parsed.data || [];
+  headers = parsed.meta?.fields || Object.keys(rawRows[0] || {});
+  cols = detectColumns(headers);
 
-/* ------------------ DOM refs ------------------ */
-const segmentsEl = document.getElementById("segments");
-const carGridEl = document.getElementById("carGrid");
-const visibleCountEl = document.getElementById("visibleCount");
-const pickedCountEl = document.getElementById("pickedCount");
-const ringEl = document.getElementById("ring");
-const classFilterEl = document.getElementById("classFilter");
-const fuelFilterEl = document.getElementById("fuelFilter");
-const startBtn = document.getElementById("startBtn");
-const executeBtn = document.getElementById("executeBtn");
+  rows = rawRows.map((r, idx) => {
+    const idCol = resolveColumn(headers, ["id","vehicle_id","product_id","uuid","key"]);
+    const b = cols.brand ? r[cols.brand] : "";
+    const m = cols.model ? r[cols.model] : "";
+    const stable = idCol && r[idCol] ? String(r[idCol]) : `${normBrand(b)}_${normModel(m)}_${idx}`;
+    return { ...r, __id: stable, __idx: idx };
+  });
 
-/* ------------------ Helpers ------------------ */
-function getFilteredCars(){
-  return ALL_CARS.filter(c => {
-    if(state.filters.segment !== "all" && c.segment !== state.filters.segment) return false;
-    if(state.filters.vclass !== "all" && c.vclass !== state.filters.vclass) return false;
-    if(state.filters.fuel !== "all" && c.fuel !== state.filters.fuel) return false;
+  document.getElementById("dataBadge").textContent = CSV_PATH;
+}
+
+/** ============================
+ *  FILTERS
+ *  ============================ */
+function applyFilters(list){
+  const segCol = cols.segment;
+  const vcCol = cols.vehicleClass;
+  const fuelCol = cols.fuel;
+
+  return list.filter(r => {
+    if(filterState.segment && segCol){
+      if(String(r[segCol]||"") !== filterState.segment) return false;
+    }
+    if(filterState.vehicleClass && vcCol){
+      if(String(r[vcCol]||"").toUpperCase() !== filterState.vehicleClass) return false;
+    }
+    if(filterState.fuel && fuelCol){
+      if(String(r[fuelCol]||"") !== filterState.fuel) return false;
+    }
     return true;
   });
 }
-function findCar(id){ return ALL_CARS.find(c=>c.id===id); }
-function isPicked(id){ return state.picked.some(p=>p?.id===id); }
-function firstOpenSlot(){ return state.picked.findIndex(v=>v===null); }
-
-/* Save selection for page 2 */
-function persistSelection(){
-  const chosen = state.picked.filter(Boolean).map(c => ({
-    id:c.id, name:c.name, brand:c.brand, segment:c.segmentName, vclass:c.vclass, fuel:c.fuel
-  }));
-  localStorage.setItem("egaux_selected_models", JSON.stringify(chosen));
+function uniqueValues(list, col){
+  const s = new Set();
+  for(const r of list){
+    const v = (r[col] ?? "").toString().trim();
+    if(v) s.add(v);
+  }
+  return Array.from(s).sort((a,b)=>a.localeCompare(b));
 }
 
-/* Navigate to compare page */
-function goToCompare(){
-  persistSelection();
-  window.location.href = "compare.html";
-}
+function buildSegmentList(){
+  const el = document.getElementById("segmentList");
+  el.innerHTML = "";
 
-/* ------------------ Render segments ------------------ */
-function renderSegments(){
-  segmentsEl.innerHTML = "";
+  const segCol = cols.segment;
+  const allBtn = document.createElement("div");
+  allBtn.className = "segitem" + (filterState.segment==="" ? " active" : "");
+  allBtn.innerHTML = `<span>All segments</span><small>${rows.length} models</small>`;
+  allBtn.onclick = () => { filterState.segment=""; renderAll(); };
+  el.appendChild(allBtn);
 
-  const allBtn = document.createElement("button");
-  allBtn.className = "seg-btn" + (state.filters.segment==="all" ? " active":"");
-  allBtn.innerHTML = `<span>All segments</span><small>${ALL_CARS.length} models</small>`;
-  allBtn.onclick = ()=>{ state.filters.segment="all"; update(); };
-  segmentsEl.appendChild(allBtn);
-
-  SEGMENTS.forEach(seg=>{
-    const btn = document.createElement("button");
-    btn.className = "seg-btn" + (state.filters.segment===seg.id ? " active":"");
-    btn.innerHTML = `<span>${seg.name}</span><small>${seg.cars.length} models</small>`;
-    btn.onclick = ()=>{ state.filters.segment=seg.id; update(); };
-    segmentsEl.appendChild(btn);
-  });
-}
-
-/* ------------------ Render car list ------------------ */
-function renderCars(){
-  carGridEl.innerHTML = "";
-  const cars = getFilteredCars();
-  visibleCountEl.textContent = `${cars.length} shown`;
-
-  cars.forEach(car=>{
-    const card = document.createElement("div");
-    card.className = "car-card" + (isPicked(car.id) ? " selected":"");
-    card.draggable = true;
-    card.dataset.carId = car.id;
-    card.innerHTML = `
-      <div class="car-icon">${car.icon}</div>
-      <div class="car-meta">
-        <div class="name">${car.name}</div>
-        <div class="sub">${car.brand}</div>
-        <div>
-          <span class="badge">${car.segmentName.toUpperCase()}</span>
-          <span class="badge">${car.vclass}</span>
-          <span class="badge">${car.fuel}</span>
-        </div>
-      </div>
-      <div class="hint">${isPicked(car.id) ? "Selected" : "Click to add"}</div>
-    `;
-
-    // drag
-    card.addEventListener("dragstart", (e)=>{
-      e.dataTransfer.setData("text/plain", car.id);
-      e.dataTransfer.effectAllowed = "move";
-      document.getElementById("dragHint").textContent = "Drop on ring";
-    });
-    card.addEventListener("dragend", ()=>{
-      document.getElementById("dragHint").textContent = "Drag & drop";
-      clearSlotHighlights();
-    });
-
-    // click-to-add/remove
-    card.addEventListener("click", ()=>{
-      if(isPicked(car.id)){
-        // remove if already picked
-        const idx = state.picked.findIndex(p=>p?.id===car.id);
-        if(idx>=0) state.picked[idx]=null;
-      } else {
-        const open = firstOpenSlot();
-        if(open>=0) state.picked[open]=car;
-      }
-      update();
-    });
-
-    carGridEl.appendChild(card);
-  });
-}
-
-/* ------------------ Ring slots ------------------ */
-function createSlots(){
-  const slotCount = 10;
-  const radius = 178;
-  const center = 210;
-  for(let i=0;i<slotCount;i++){
-    const angle = (i/slotCount)*Math.PI*2 - Math.PI/2;
-    const x = center + radius*Math.cos(angle) - 47;
-    const y = center + radius*Math.sin(angle) - 30;
-
-    const slot = document.createElement("div");
-    slot.className = "slot";
-    slot.style.left = x+"px";
-    slot.style.top = y+"px";
-    slot.dataset.index = i;
-    slot.innerHTML = `<div>Empty</div>`;
-
-    slot.addEventListener("dragover",(e)=>{
-      e.preventDefault();
-      slot.classList.add("highlight");
-      e.dataTransfer.dropEffect = "move";
-    });
-    slot.addEventListener("dragleave",()=> slot.classList.remove("highlight"));
-    slot.addEventListener("drop",(e)=>{
-      e.preventDefault();
-      slot.classList.remove("highlight");
-      const carId = e.dataTransfer.getData("text/plain");
-      addCarToSlot(carId, i);
-    });
-
-    ringEl.appendChild(slot);
+  if(!segCol){
+    const info = document.createElement("div");
+    info.style.color = "var(--muted)";
+    info.style.fontWeight = "750";
+    info.style.marginTop = "8px";
+    info.textContent = "No Segment column detected in CSV.";
+    el.appendChild(info);
+    return;
   }
 
-  ringEl.addEventListener("dragover",(e)=>{
-    e.preventDefault();
-    highlightOpenSlots();
-  });
-  ringEl.addEventListener("drop",(e)=>{
-    e.preventDefault();
-    clearSlotHighlights();
-    const carId = e.dataTransfer.getData("text/plain");
-    const openIndex = firstOpenSlot();
-    if(openIndex>=0) addCarToSlot(carId, openIndex);
+  const counts = new Map();
+  for(const r of rows){
+    const v = String(r[segCol]||"").trim();
+    if(!v) continue;
+    counts.set(v, (counts.get(v)||0)+1);
+  }
+  const segs = Array.from(counts.keys()).sort((a,b)=>a.localeCompare(b));
+  for(const s of segs){
+    const item = document.createElement("div");
+    item.className = "segitem" + (filterState.segment===s ? " active" : "");
+    item.innerHTML = `<span>${s}</span><small>${counts.get(s)} models</small>`;
+    item.onclick = () => { filterState.segment = s; renderAll(); };
+    el.appendChild(item);
+  }
+}
+
+function buildFuelSelect(){
+  const fuelCol = cols.fuel;
+  const sel = document.getElementById("fuelSelect");
+  const current = filterState.fuel;
+  sel.innerHTML = `<option value="">All fuels</option>`;
+  if(!fuelCol){
+    sel.disabled = true;
+    return;
+  }
+  sel.disabled = false;
+  const vals = uniqueValues(rows, fuelCol);
+  for(const v of vals){
+    const opt = document.createElement("option");
+    opt.value = v;
+    opt.textContent = v;
+    if(v === current) opt.selected = true;
+    sel.appendChild(opt);
+  }
+}
+
+/** ============================
+ *  RING UI
+ *  ============================ */
+function initRingSlots(){
+  const ring = document.getElementById("ring");
+  // remove existing slots
+  ring.querySelectorAll(".slot").forEach(n=>n.remove());
+
+  // angles start at top
+  for(let i=0;i<SLOT_COUNT;i++){
+    const slot = document.createElement("div");
+    slot.className = "slot empty";
+    slot.dataset.slot = String(i);
+    slot.textContent = "Empty";
+
+    // position
+    const angle = (-90 + (360 / SLOT_COUNT) * i) * Math.PI/180;
+    const radius = 42; // percent
+    const cx = 50 + radius * Math.cos(angle);
+    const cy = 50 + radius * Math.sin(angle);
+    slot.style.left = cx + "%";
+    slot.style.top  = cy + "%";
+
+    // DnD handlers
+    slot.addEventListener("dragover", e => {
+      e.preventDefault();
+      slot.classList.add("over");
+    });
+    slot.addEventListener("dragleave", () => slot.classList.remove("over"));
+    slot.addEventListener("drop", e => {
+      e.preventDefault();
+      slot.classList.remove("over");
+      const id = e.dataTransfer.getData("text/plain");
+      const idx = Number(slot.dataset.slot);
+      if(id) placeInSlot(idx, id);
+    });
+
+    ring.appendChild(slot);
+  }
+}
+
+function renderRing(){
+  const picked = selectedIds().length;
+  document.getElementById("pickedBadge").textContent = `${picked}/${SLOT_COUNT} picked`;
+
+  const ring = document.getElementById("ring");
+  const slotEls = ring.querySelectorAll(".slot");
+
+  slotEls.forEach(el => {
+    const idx = Number(el.dataset.slot);
+    const id = slots[idx];
+    el.innerHTML = "";
+    el.className = "slot" + (id ? "" : " empty");
+    if(!id){
+      el.textContent = "Empty";
+      return;
+    }
+    const r = rows.find(x => x.__id === id);
+    const name = r ? rowDisplayName(r) : id;
+
+    const thumb = document.createElement("div");
+    thumb.className = "thumb";
+    const img = document.createElement("img");
+    img.alt = name;
+    img.src = r ? imageUrlForRow(r) : FALLBACK_ICON;
+    img.onerror = () => { img.src = FALLBACK_ICON; };
+    thumb.appendChild(img);
+
+    const title = document.createElement("div");
+    title.className = "name";
+    title.textContent = name;
+
+    const x = document.createElement("div");
+    x.className = "x";
+    x.textContent = "×";
+    x.title = "Remove";
+    x.onclick = (ev) => {
+      ev.stopPropagation();
+      removeId(id);
+    };
+
+    el.appendChild(thumb);
+    el.appendChild(title);
+    el.appendChild(x);
   });
 }
 
-function renderSlots(){
-  const slots = [...ringEl.querySelectorAll(".slot")];
-  slots.forEach(slot=>{
-    const i = Number(slot.dataset.index);
-    const car = state.picked[i];
-    if(!car){
-      slot.innerHTML = `<div>Empty</div>`;
-      return;
-    }
-    slot.innerHTML = `
-      <div class="mini pop" draggable="true">
-        <div class="mini-icon">${car.icon}</div>
-        <div class="mini-name" title="${car.name}">${car.name}</div>
-      </div>
-      <div class="remove" title="Remove">×</div>
-    `;
+/** ============================
+ *  MODELS GRID
+ *  ============================ */
+function renderGrid(){
+  const grid = document.getElementById("grid");
+  grid.innerHTML = "";
 
-    slot.querySelector(".mini").addEventListener("dragstart",(e)=>{
-      e.dataTransfer.setData("text/plain", car.id);
+  const filtered = applyFilters(rows);
+  document.getElementById("shownBadge").textContent = `${filtered.length} shown`;
+
+  for(const r of filtered){
+    const id = r.__id;
+    const card = document.createElement("div");
+    card.className = "card" + (isSelected(id) ? " selected" : "");
+    card.draggable = true;
+
+    card.addEventListener("dragstart", e => {
+      e.dataTransfer.setData("text/plain", id);
       e.dataTransfer.effectAllowed = "move";
     });
 
-    slot.querySelector(".remove").onclick = ()=>{
-      state.picked[i]=null;
-      update();
-    };
+    card.onclick = () => toggleSelect(id);
+
+    const t = document.createElement("div");
+    t.className = "thumb";
+    const img = document.createElement("img");
+    img.alt = rowDisplayName(r);
+    img.src = imageUrlForRow(r);
+    img.onerror = () => { img.src = FALLBACK_ICON; };
+    t.appendChild(img);
+
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    const name = document.createElement("div");
+    name.className = "name";
+    name.textContent = rowDisplayName(r);
+
+    const sub = document.createElement("div");
+    sub.className = "sub";
+    sub.textContent = rowSubline(r) || "—";
+
+    const tags = document.createElement("div");
+    tags.className = "tags";
+
+    const segCol = cols.segment, vcCol = cols.vehicleClass, fuelCol = cols.fuel;
+    const tagVals = [
+      segCol ? r[segCol] : null,
+      vcCol ? (String(r[vcCol]||"").toUpperCase()) : null,
+      fuelCol ? r[fuelCol] : null
+    ].filter(Boolean).slice(0,3);
+
+    for(const tv of tagVals){
+      const tag = document.createElement("span");
+      tag.className = "tag";
+      tag.textContent = String(tv);
+      tags.appendChild(tag);
+    }
+
+    meta.appendChild(name);
+    meta.appendChild(sub);
+    meta.appendChild(tags);
+
+    card.appendChild(t);
+    card.appendChild(meta);
+    grid.appendChild(card);
+  }
+}
+
+/** ============================
+ *  PERSISTENCE + NAV
+ *  ============================ */
+const SELECTION_KEY = "egaux_selected_ids_v1";
+const META_KEY = "egaux_selection_meta_v1";
+
+function persistSelection(){
+  localStorage.setItem(SELECTION_KEY, JSON.stringify(selectedIds()));
+  localStorage.setItem(META_KEY, JSON.stringify({
+    reportStyle: document.getElementById("reportStyle").value,
+    notes: document.getElementById("notes").value,
+    ts: Date.now()
+  }));
+}
+function loadPersistedSelection(){
+  try{
+    const raw = localStorage.getItem(SELECTION_KEY);
+    if(!raw) return;
+    const ids = JSON.parse(raw);
+    if(Array.isArray(ids) && ids.length){
+      slots = Array.from({length:SLOT_COUNT}, () => null);
+      for(let i=0;i<Math.min(ids.length,SLOT_COUNT);i++){
+        slots[i] = ids[i];
+      }
+    }
+  }catch{}
+  try{
+    const meta = JSON.parse(localStorage.getItem(META_KEY) || "{}");
+    if(meta.reportStyle) document.getElementById("reportStyle").value = meta.reportStyle;
+    if(meta.notes) document.getElementById("notes").value = meta.notes;
+  }catch{}
+}
+
+function goCompare(){
+  const ids = selectedIds();
+  if(!ids.length){
+    alert("Pick at least one model for comparison.");
+    return;
+  }
+  persistSelection();
+  window.location.href = COMPARE_PAGE;
+}
+
+/** ============================
+ *  RENDER ALL
+ *  ============================ */
+function renderAll(){
+  buildSegmentList();
+  buildFuelSelect();
+  renderRing();
+  renderGrid();
+}
+
+/** ============================
+ *  INIT
+ *  ============================ */
+(async function init(){
+  initRingSlots();
+
+  // UI events
+  document.getElementById("vehicleClassSelect").addEventListener("change", (e)=>{
+    filterState.vehicleClass = e.target.value;
+    renderAll();
   });
-
-  pickedCountEl.textContent = state.picked.filter(Boolean).length;
-}
-
-function highlightOpenSlots(){
-  ringEl.querySelectorAll(".slot").forEach((slot, i)=>{
-    if(state.picked[i]===null) slot.classList.add("highlight");
+  document.getElementById("fuelSelect").addEventListener("change", (e)=>{
+    filterState.fuel = e.target.value;
+    renderAll();
   });
-}
-function clearSlotHighlights(){
-  ringEl.querySelectorAll(".slot.highlight")
-    .forEach(s=>s.classList.remove("highlight"));
-}
+  document.getElementById("clearFiltersBtn").onclick = ()=>{
+    filterState = { segment:"", vehicleClass:"", fuel:"" };
+    document.getElementById("vehicleClassSelect").value = "";
+    document.getElementById("fuelSelect").value = "";
+    renderAll();
+  };
 
-/* ------------------ Add/remove logic ------------------ */
-function addCarToSlot(carId, slotIndex){
-  const car = findCar(carId);
-  if(!car) return;
+  document.getElementById("startBtn").onclick = goCompare;
+  document.getElementById("executeBtn").onclick = goCompare;
 
-  const already = state.picked.findIndex(c=>c?.id===carId);
-  if(already>=0) state.picked[already] = null;
-
-  state.picked[slotIndex]=car;
-  update();
-}
-
-/* ------------------ Filter events ------------------ */
-classFilterEl.addEventListener("change", e=>{
-  state.filters.vclass = e.target.value;
-  update();
-});
-fuelFilterEl.addEventListener("change", e=>{
-  state.filters.fuel = e.target.value;
-  update();
-});
-document.getElementById("clearFilters").onclick = ()=>{
-  state.filters.segment="all";
-  state.filters.vclass="all";
-  state.filters.fuel="all";
-  classFilterEl.value="all";
-  fuelFilterEl.value="all";
-  update();
-};
-
-/* ------------------ Start / Execute buttons ------------------ */
-startBtn.addEventListener("click", goToCompare);
-executeBtn.addEventListener("click", goToCompare);
-
-/* ------------------ Update cycle ------------------ */
-function update(){
-  renderSegments();
-  renderCars();
-  renderSlots();
-  persistSelection(); // keep current selection synced
-}
-
-/* ------------------ Boot ------------------ */
-renderSegments();
-createSlots();
-update();
+  // load data
+  try{
+    await loadCSV();
+    loadPersistedSelection();
+    renderAll();
+  }catch(err){
+    console.error(err);
+    document.getElementById("dataBadge").textContent = "CSV missing";
+    alert(
+      "Could not load Product_data_filled_updated.csv.\n" +
+      "Make sure it is in the same folder as index.html (and deployed)."
+    );
+  }
+})();
 </script>
 </body>
 </html>

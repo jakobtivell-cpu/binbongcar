@@ -3,9 +3,11 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Egaux — Weighted Spec Table</title>
+  <title>Egaux — Dynamic Comparison</title>
 
-  <!-- SheetJS for real Excel export -->
+  <!-- CSV parser -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <!-- Excel export -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js"></script>
 
   <style>
@@ -19,6 +21,7 @@
       --shadow-soft:0 6px 16px rgba(16,18,25,.06);
       --accent:#111;
     }
+    *{ box-sizing:border-box; }
     body{
       font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
       margin: 0;
@@ -30,10 +33,11 @@
 
     .wrap{
       display:grid;
-      grid-template-rows:auto auto 1fr;
+      grid-template-rows:auto auto auto 1fr;
       gap:10px;
       padding:14px;
       height:100vh;
+      min-height:0;
     }
 
     header{
@@ -49,11 +53,11 @@
       flex-wrap:wrap;
     }
     h1{ font-size:18px; margin:0; letter-spacing:.2px;}
-    .note{ font-size:12px; color:var(--muted); }
+    .note{ font-size:12px; color:var(--muted); font-weight:650; }
 
     .btn{
       border:0; padding:9px 12px; border-radius:10px;
-      background:var(--accent); color:#fff; font-weight:800; cursor:pointer;
+      background:var(--accent); color:#fff; font-weight:900; cursor:pointer;
       box-shadow:var(--shadow-soft); letter-spacing:.4px; font-size:12px;
     }
     .btn.secondary{ background:#fff; color:#111; border:1px solid var(--line); }
@@ -65,15 +69,16 @@
       padding:10px;
       box-shadow:var(--shadow);
       display:flex; gap:8px; flex-wrap:wrap; align-items:center;
+      min-height:0;
     }
     .toolbar input[type="text"]{
-      padding:8px 10px; font-size:12px; width:240px;
-      border:1px solid var(--line); border-radius:9px; background:#fff; font-weight:600;
+      padding:8px 10px; font-size:12px; width:280px;
+      border:1px solid var(--line); border-radius:9px; background:#fff; font-weight:650;
     }
     details.columns-panel{
       border:1px dashed var(--line); padding:6px 8px; border-radius:10px; background:#fff; font-size:12px;
     }
-    details.columns-panel summary{ cursor:pointer; font-weight:700; }
+    details.columns-panel summary{ cursor:pointer; font-weight:800; }
     .col-list{ margin-top:6px; display:flex; flex-wrap:wrap; gap:10px; }
     .col-item{ display:flex; align-items:center; gap:6px; }
 
@@ -90,8 +95,8 @@
       background:#fff; border:1px solid #f0f1f3; padding:8px; border-radius:10px;
       box-shadow:var(--shadow-soft);
     }
-    .summary .label{ font-weight:700; margin-bottom:2px; }
-    .summary .value{ font-variant-numeric: tabular-nums; font-size:14px; font-weight:800; }
+    .summary .label{ font-weight:900; margin-bottom:2px; }
+    .summary .value{ font-variant-numeric: tabular-nums; font-size:14px; font-weight:950; }
 
     .table-wrap{
       background:var(--panel);
@@ -108,32 +113,64 @@
     th{
       background: #fafafa;
       position: sticky; top: 0; z-index: 2; user-select:none;
-      font-weight:800;
+      font-weight:900;
     }
     td:first-child, th:first-child{ position: sticky; left: 0; background: #fff; z-index: 1;}
     th:first-child{ background:#fafafa; z-index:3;}
-    .unit{ color:#666; font-size: 11px;}
-    input.mult{ width: 70px; padding: 4px; font-size: 12px; border:1px solid var(--line); border-radius:7px; font-weight:700;}
+
+    input.mult{
+      width: 86px; padding: 5px 6px; font-size: 12px;
+      border:1px solid var(--line); border-radius:8px; font-weight:850;
+      text-align:right;
+    }
     .num{ text-align: right; font-variant-numeric: tabular-nums; }
     .center{ text-align: center; }
-    .total-row td{ font-weight: 800; background: #fafafa; }
-    .contrib{ color:#0a3; font-weight:700;}
-    .neg{ color:#b00; font-weight:700;}
+    .total-row td{ font-weight: 950; background: #fafafa; }
+    .contrib{ color:#0a3; font-weight:900;}
+    .neg{ color:#b00; font-weight:900;}
 
     th.model-col{ cursor: grab; }
     th.model-col.dragging{ opacity:0.5; }
-    th.model-col .drag-hint{ font-size:10px; color:#777; font-weight:600; margin-top:2px; }
+
+    .headModel{
+      display:flex; align-items:center; gap:8px;
+      min-width:0;
+    }
+    .headModel img{
+      width:44px; height:30px;
+      border-radius:10px;
+      border:1px solid var(--line);
+      background:#f3f4f6;
+      object-fit:contain;
+      flex:0 0 auto;
+    }
+    .headModel .t{
+      min-width:0;
+    }
+    .headModel .name{
+      font-weight:950;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .headModel .sub{
+      font-size:10px;
+      color:var(--muted);
+      font-weight:750;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
   </style>
 </head>
+
 <body>
 <div class="wrap">
 
   <header>
     <div>
-      <h1>Comparable Versions — Weighted Spec Table</h1>
-      <div class="note">
-        Edit multipliers per row. Scores update instantly. Multipliers + column layout persist locally.
-      </div>
+      <h1>Comparison — CSV Driven</h1>
+      <div class="note" id="sourceNote">Source: Product_data_filled_updated.csv</div>
     </div>
     <div style="display:flex; gap:8px;">
       <button class="btn secondary" onclick="window.location.href='index.html'">Back to selection</button>
@@ -143,10 +180,10 @@
 
   <div class="toolbar">
     <button class="btn secondary" id="resetBtn">Reset multipliers</button>
-    <button class="btn secondary" id="setSampleBtn">Sample multipliers</button>
-    <input id="filterInput" type="text" placeholder="Filter rows (e.g. range, length, AWD, CO2)"/>
+    <button class="btn secondary" id="sampleBtn">Sample multipliers</button>
+    <input id="filterInput" type="text" placeholder="Filter fields (type any column name)"/>
     <details class="columns-panel">
-      <summary>Columns (hide / show + drag headers to reorder)</summary>
+      <summary>Models (hide/show + drag headers to reorder)</summary>
       <div id="colList" class="col-list"></div>
     </details>
   </div>
@@ -164,184 +201,236 @@
 </div>
 
 <script>
-/** -----------------------------
- *  0) Selected models from index.html
- *  ----------------------------- */
-function loadSelectedModels(){
-  try{
-    const raw = localStorage.getItem("egaux_selected_models");
-    if(!raw) return null;
-    const arr = JSON.parse(raw);
-    if(Array.isArray(arr) && arr.length) return arr;
-    return null;
-  }catch{ return null; }
+/** ============================
+ *  CONFIG
+ *  ============================ */
+const CSV_PATH = "Product_data_filled_updated.csv";
+const SELECTION_KEY = "egaux_selected_ids_v1";
+const MULT_KEY = "egaux_field_multipliers_v1";
+const COL_KEY  = "egaux_compare_modelcols_v1";
+
+// fallback icon (same for all missing images)
+const FALLBACK_ICON = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEYAAAA9CAYAAAAQyx+GAAAAAXNSR0IArs4c6QAAAKFJREFUeF7t2TEKwDAQRNH//1o9qQmQJYl0kM2o8q9bQm2wYkQAAAAAAAAAAAAAAADwq5pY0y0n2k6mG9b0o5w0o8G2o6a9y1y8Qz5l0wQw9c6wX7m4mXq0b6m8v2fY3n8m0o0d9c0p6o3o0o9o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0oAAAAAAAAAAAAAAADgF7wBv7v2a2o3qgAAAABJRU5ErkJggg==";
+
+/** ============================
+ *  STATE
+ *  ============================ */
+let headers = [];
+let rows = [];           // all csv rows
+let selectedIds = [];    // from localStorage (ordered)
+let selectedRows = [];   // selected row objects in that order
+
+let cols = {};           // detected columns for brand/model etc
+let fields = [];         // table rows = CSV column names
+
+let multMap = {};        // multipliers per field (column)
+let colState = [];       // visible model columns + order
+let lastTotals = {};     // totals per model key (for export)
+
+/** ============================
+ *  UTILS
+ *  ============================ */
+function normKey(s){
+  return String(s||"").toLowerCase().replace(/[^a-z0-9]+/g,"");
 }
-const selected = loadSelectedModels();
-
-/** -----------------------------
- *  1) Schema: facts 1–200 (unchanged)
- *  ----------------------------- */
-const facts = [
-  [1,"Length","m"],[2,"Width excl mirrors","m"],[3,"Width incl mirrors","m"],[4,"Height","m"],[5,"Wheelbase","m"],
-  [6,"Front track","m"],[7,"Rear track","m"],[8,"Ground clearance","mm"],[9,"Approach angle","deg"],[10,"Departure angle","deg"],
-  [11,"Ramp/breakover angle","deg"],[12,"Turning circle","m"],[13,"Kerb weight (DIN)","kg"],[14,"GVWR","kg"],[15,"Max payload","kg"],
-  [16,"Max roof load","kg"],[17,"Max tow braked","kg"],[18,"Max tow unbraked","kg"],[19,"Max nose load","kg"],[20,"Drag coefficient Cd",""],
-  [21,"Frontal area","m²"],[22,"Body type",""],[23,"Number of doors","#"],[24,"Number of seats","#"],[25,"Cargo volume rear seats up","L"],
-  [26,"Cargo volume max seats folded","L"],[27,"Frunk volume","L"],[28,"Fuel tank capacity","L"],[29,"AdBlue/DEF tank capacity","L"],[30,"Battery capacity gross","kWh"],
-  [31,"Battery capacity usable","kWh"],[32,"System voltage","V"],[33,"On-board AC charger","kW"],[34,"Max DC charging power","kW"],[35,"Charging time AC 0–100%","h"],
-  [36,"Charging time DC 10–80%","min"],[37,"Electric range WLTP combined","km"],[38,"Electric range WLTP city","km"],[39,"Combined range","km"],[40,"Engine type",""],
-  [41,"Engine displacement","cc"],[42,"Number of cylinders","#"],[43,"Valvetrain",""],[44,"Bore x stroke","mm"],[45,"Compression ratio",""],
-  [46,"Max power","kW"],[47,"Max power","hp"],[48,"Max torque","Nm"],[49,"Torque rpm","rpm"],[50,"Motor power front","kW"],
-  [51,"Motor power rear","kW"],[52,"System power","kW"],[53,"System power","hp"],[54,"System torque (LC)","Nm"],[55,"Transmission type",""],
-  [56,"Number of gears","#"],[57,"Final drive ratio",""],[58,"Drive layout",""],[59,"Differential type",""],[60,"0–100 km/h","s"],
-  [61,"0–60 mph","s"],[62,"80–120 km/h kickdown","s"],[63,"Top speed","km/h"],[64,"Top speed EV mode","km/h"],[65,"Quarter mile time","s"],
-  [66,"Quarter mile speed","km/h"],[67,"Power-to-weight","hp/tonne"],[68,"Max gradeability","%"],[69,"Fuel consumption combined WLTP","L/100 km"],[70,"Fuel consumption urban","L/100 km"],
-  [71,"Fuel consumption extra-urban","L/100 km"],[72,"Fuel consumption mpg US","mpg"],[73,"Fuel consumption mpg UK","mpg"],[74,"Electric consumption WLTP","kWh/100 km"],[75,"CO2 WLTP","g/km"],
-  [76,"NOx","mg/km"],[77,"Particles/PN","#/km"],[78,"Emission standard",""],[79,"Start-stop",""],[80,"Recuperation peak","kW"],
-  [81,"Idle CO2","g/km"],[82,"Drive-by noise","dB(A)"],[83,"Front suspension type",""],[84,"Rear suspension type",""],[85,"Front brake type/size",""],
-  [86,"Rear brake type/size",""],[87,"Front disc diameter","mm"],[88,"Rear disc diameter","mm"],[89,"Front caliper pistons","#"],[90,"Rear caliper pistons","#"],
-  [91,"Steering type",""],[92,"Steering ratio",""],[93,"Minimum turning radius","m"],[94,"Wheel size front","in"],[95,"Wheel size rear","in"],
-  [96,"Rim width front","in"],[97,"Rim width rear","in"],[98,"Tire size front",""],[99,"Tire size rear",""],[100,"Spare wheel size",""],
-  [101,"Air spring pressure range","bar"],[102,"Damping modes count","#"],[103,"Headlight type",""],[104,"DRL type",""],[105,"Rear light type",""],
-  [106,"Upholstery material",""],[107,"Front seat travel","mm"],[108,"Rear seat travel","mm"],[109,"Seat height adjustment range","mm"],[110,"Front headroom","mm"],
-  [111,"Rear headroom","mm"],[112,"Front legroom","mm"],[113,"Rear legroom","mm"],[114,"Front shoulder room","mm"],[115,"Rear shoulder room","mm"],
-  [116,"Front hip room","mm"],[117,"Rear hip room","mm"],[118,"Cabin noise 100 km/h","dB(A)"],[119,"Refrigerant type",""],[120,"Cabin air filter spec",""],
-  [121,"Infotainment screen size","in"],[122,"Instrument cluster size","in"],[123,"Speaker count","#"],[124,"Amplifier power","W"],[125,"USB ports count","#"],
-  [126,"12V outlets count","#"],[127,"Wireless charging power","W"],[128,"Navigation update period","yrs"],[129,"Connectivity modem",""],[130,"Safety rating",""],
-  [131,"Airbag count","#"],[132,"ISOFIX positions","#"],[133,"Basic warranty","yrs/km"],[134,"Powertrain warranty","yrs/km"],[135,"Battery warranty","yrs/km"],
-  [136,"Service interval","km/months"],[137,"Paint colors available","#"],[138,"Trim lines available","#"],[139,"MSRP base (Sweden)","SEK"],[140,"Destination fee","SEK"],
-  [141,"Production country",""],[142,"Platform code",""],
-  [143,"Sunroof/pano roof","1/0"],[144,"Convertible roof","1/0"],[145,"Roof rails","1/0"],[146,"Tow hitch factory","1/0"],[147,"AWD","1/0"],
-  [148,"RWD option present","1/0"],[149,"Locking center diff","1/0"],[150,"Locking rear diff","1/0"],[151,"Adaptive suspension (PASM)","1/0"],[152,"Air suspension","1/0"],
-  [153,"Rear-axle steering","1/0"],[154,"Active roll stabilization","1/0"],[155,"ABS","1/0"],[156,"ESC/PSM","1/0"],[157,"Traction control","1/0"],
-  [158,"Brake-by-wire","1/0"],[159,"Regenerative braking","1/0"],[160,"One-pedal mode","1/0"],[161,"LED headlights","1/0"],[162,"Matrix/adaptive headlights","1/0"],
-  [163,"Automatic high beam","1/0"],[164,"Front fog lights","1/0"],[165,"Headlight washers","1/0"],[166,"Keyless entry/start","1/0"],[167,"Remote pre-conditioning","1/0"],
-  [168,"Power tailgate","1/0"],[169,"Hands-free tailgate","1/0"],[170,"Soft-close doors","1/0"],[171,"Heated front seats","1/0"],[172,"Ventilated front seats","1/0"],
-  [173,"Heated rear seats","1/0"],[174,"Power driver seat","1/0"],[175,"Memory seats","1/0"],[176,"Massage seats","1/0"],[177,"Heated steering wheel","1/0"],
-  [178,"Dual-zone climate","1/0"],[179,"Tri/4-zone climate","1/0"],[180,"Heat pump","1/0"],[181,"App pre-heat","1/0"],[182,"Wireless CarPlay/AA","1/0"],
-  [183,"Built-in navigation","1/0"],[184,"HUD","1/0"],[185,"Premium audio brand","1/0"],[186,"Rear entertainment","1/0"],[187,"360° camera","1/0"],
-  [188,"Parking sensors front","1/0"],[189,"Parking sensors rear","1/0"],[190,"Auto parking assist","1/0"],[191,"Adaptive cruise","1/0"],[192,"Lane keeping","1/0"],
-  [193,"Blind-spot monitoring","1/0"],[194,"Rear cross-traffic alert","1/0"],[195,"AEB","1/0"],[196,"Traffic sign recognition","1/0"],[197,"Driver monitoring","1/0"],
-  [198,"OTA updates","1/0"],[199,"V2L/V2G capable","1/0"],[200,"Run-flat tires","1/0"]
-];
-
-/** -----------------------------
- *  2) Models
- *  - if user selected on page 1, use those labels/keys
- *  - else fall back to baseModels
- *  ----------------------------- */
-const baseModels = [
-  { key:"Macan_Electric_RWD", label:"Macan Electric (RWD)" },
-  { key:"Macan_4_AWD",        label:"Macan 4 (AWD)" },
-  { key:"Macan_4S_AWD",       label:"Macan 4S (AWD)" },
-  { key:"Macan_Turbo_AWD",    label:"Macan Turbo (AWD)" },
-  { key:"EV6_RWD_84kWh",      label:"EV6 RWD 84 kWh" },
-  { key:"EV6_AWD_84kWh",      label:"EV6 AWD 84 kWh" },
-  { key:"EV6_GT_AWD_84kWh",   label:"EV6 GT AWD 84 kWh" }
-];
-
-const models = (selected && selected.length)
-  ? selected.map((m,i)=>({ key: m.id.replace(/[^a-zA-Z0-9_]/g,"_") + "_" + i, label: m.name }))
-  : baseModels;
-
-/** -----------------------------
- *  3) Observed values (unchanged)
- *  ----------------------------- */
-const observed = {
-  /* --- Porsche Macan EV --- */
-  Macan_Electric_RWD: {1:4.784,2:1.938,3:2.152,4:1.623,5:2.893,12:12.1,13:2220,22:"SUV",23:5,24:5,25:540,26:1348,27:84,30:100,32:800,33:11,34:270,36:21,37:"536–641",38:"696–831",40:"EV",46:250,47:340,51:250,52:250,53:340,54:563,55:"1-speed",56:1,58:"RWD",69:0,70:0,71:0,74:"19.8–17.0",75:0,78:"ZEV",91:"EPS",93:12.1,103:"LED",104:"LED",105:"LED",121:10.9,122:12.6,129:"4G/5G",132:2,135:"8/160000",141:"Germany",142:"PPE",147:0,148:1,151:0,152:0,155:1,156:1,157:1,158:1,159:1,160:1,161:1,162:0,163:1,166:1,167:1,168:1,171:1,174:1,178:1,180:1,181:1,182:1,183:1,188:1,189:1,191:1,192:1,193:1,194:1,195:1,196:1,197:1,198:1},
-  Macan_4_AWD:        {1:4.784,2:1.938,3:2.152,4:1.622,5:2.893,12:12.1,13:2330,22:"SUV",23:5,24:5,25:540,26:1348,27:84,30:100,31:95,32:800,33:11,34:270,36:21,37:"516–612",38:"665–782",40:"EV",46:285,47:387,52:285,53:387,54:650,55:"1-speed",56:1,58:"AWD",60:5.2,63:220,69:0,70:0,71:0,74:"21.1–17.9",75:0,78:"ZEV",91:"EPS",93:12.1,103:"LED",104:"LED",105:"LED",121:10.9,122:12.6,129:"4G/5G",132:2,135:"8/160000",141:"Germany",142:"PPE",147:1,148:0,151:0,152:0,155:1,156:1,157:1,158:1,159:1,160:1,161:1,162:0,163:1,166:1,167:1,168:1,171:1,174:1,178:1,180:1,181:1,182:1,183:1,188:1,189:1,191:1,192:1,193:1,194:1,195:1,196:1,197:1,198:1},
-  Macan_4S_AWD:       {1:4.784,2:1.938,3:2.152,4:1.622,5:2.893,12:12.1,13:2345,22:"SUV",23:5,24:5,25:540,26:1348,27:84,30:100,31:95,32:800,33:11,34:270,36:21,37:"~606",40:"EV",46:330,47:448,52:330,53:448,54:820,55:"1-speed",56:1,58:"AWD",60:4.1,63:240,69:0,70:0,71:0,74:"20.7–17.7",75:0,78:"ZEV",91:"EPS",93:12.1,103:"LED",104:"LED",105:"LED",121:10.9,122:12.6,129:"4G/5G",132:2,135:"8/160000",141:"Germany",142:"PPE",147:1,148:0,151:1,152:0,155:1,156:1,157:1,158:1,159:1,160:1,161:1,162:0,163:1,166:1,167:1,168:1,171:1,174:1,178:1,180:1,181:1,182:1,183:1,188:1,189:1,191:1,192:1,193:1,194:1,195:1,196:1,197:1,198:1},
-  Macan_Turbo_AWD:    {1:4.784,2:1.938,3:2.152,4:1.621,5:2.893,12:12.1,13:2405,22:"SUV",23:5,24:5,25:480,26:1288,27:84,30:100,31:95,32:800,33:11,34:270,36:21,37:"518–591",40:"EV",46:430,47:584,52:430,53:584,54:1130,55:"1-speed",56:1,58:"AWD",60:3.3,63:260,69:0,70:0,71:0,74:"20.7–18.8",75:0,78:"ZEV",91:"EPS",93:12.1,103:"LED",104:"LED",105:"LED",121:10.9,122:12.6,129:"4G/5G",132:2,135:"8/160000",141:"Germany",142:"PPE",147:1,148:0,150:1,151:1,152:1,155:1,156:1,157:1,158:1,159:1,160:1,161:1,162:1,163:1,166:1,167:1,168:1,171:1,174:1,175:1,178:1,180:1,181:1,182:1,183:1,188:1,189:1,191:1,192:1,193:1,194:1,195:1,196:1,197:1,198:1},
-
-  /* --- Kia EV6 --- */
-  EV6_RWD_84kWh:      {1:4.695,2:1.890,4:1.550,5:2.900,8:160,12:11.62,22:"SUV",23:5,24:5,25:480,26:1290,27:50,30:84,32:800,33:11,34:239,35:7.3,36:18,37:582,40:"EV",46:168,47:228,52:168,53:228,54:350,55:"1-speed",56:1,58:"RWD",60:7.3,63:185,69:0,70:0,71:0,74:16.5,75:0,78:"ZEV",83:"McPherson",84:"Multi-link",91:"EPS",93:11.62,94:19,95:19,98:"235/55R19",99:"235/55R19",103:"LED",104:"LED",105:"LED",121:12.3,122:12.3,127:1,129:"4G/5G",132:2,133:"7yr/150000km",134:"7yr/150000km",135:"7yr/150000km",139:596400,141:"Korea",142:"E-GMP",147:0,148:1,155:1,156:1,157:1,159:1,160:1,161:1,163:1,166:1,167:1,168:1,171:1,174:1,177:1,178:1,180:1,181:1,182:1,183:1,188:1,189:1,191:1,192:1,193:1,194:1,195:1,196:1,197:1,198:1,199:1},
-  EV6_AWD_84kWh:      {1:4.695,2:1.890,4:1.550,5:2.900,8:160,12:11.62,22:"SUV",23:5,24:5,25:480,26:1290,27:20,30:84,32:800,33:11,34:239,35:7.3,36:18,37:546,40:"EV",46:239,47:325,52:239,53:325,54:605,55:"1-speed",56:1,58:"AWD",60:5.2,63:188,69:0,70:0,71:0,74:17.2,75:0,78:"ZEV",83:"McPherson",84:"Multi-link",91:"EPS",93:11.62,94:19,95:19,98:"235/55R19",99:"235/55R19",103:"LED",104:"LED",105:"LED",121:12.3,122:12.3,127:1,129:"4G/5G",132:2,133:"7yr/150000km",134:"7yr/150000km",135:"7yr/150000km",139:711400,141:"Korea",142:"E-GMP",147:1,148:0,155:1,156:1,157:1,159:1,160:1,161:1,162:1,163:1,166:1,167:1,168:1,171:1,174:1,177:1,178:1,180:1,181:1,182:1,183:1,184:1,188:1,189:1,191:1,192:1,193:1,194:1,195:1,196:1,197:1,198:1,199:1},
-  EV6_GT_AWD_84kWh:   {1:4.695,2:1.890,4:1.550,5:2.900,8:160,12:11.62,22:"SUV",23:5,24:5,25:480,26:1290,27:20,30:84,32:800,33:11,34:258,36:18,37:449,40:"EV",46:478,47:641,52:478,53:641,54:770,55:"1-speed",56:1,58:"AWD",60:3.5,63:260,69:0,70:0,71:0,75:0,78:"ZEV",83:"McPherson",84:"Multi-link",87:380,88:360,91:"EPS",93:11.62,94:21,95:21,98:"255/40R21",99:"255/40R21",103:"LED",104:"LED",105:"LED",121:12.3,122:12.3,123:14,127:1,129:"4G/5G",132:2,133:"7yr/150000km",134:"7yr/150000km",135:"7yr/150000km",139:771400,141:"Korea",142:"E-GMP",147:1,151:1,152:1,155:1,156:1,157:1,159:1,160:1,161:1,162:1,163:1,166:1,167:1,168:1,171:1,172:1,174:1,175:1,177:1,178:1,180:1,181:1,182:1,183:1,184:1,185:1,188:1,189:1,191:1,192:1,193:1,194:1,195:1,196:1,197:1,198:1,199:1}
-};
-
-/** -----------------------------
- *  4) Storage keys
- *  ----------------------------- */
-const MULT_KEY  = "ev_spec_multipliers_v2";
-const COL_KEY   = "ev_spec_columns_v2";
-
-function loadJSON(key, fallback) {
-  try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; }
-  catch { return fallback; }
+function resolveColumn(headerList, candidates){
+  const map = new Map(headerList.map(h => [normKey(h), h]));
+  for(const c of candidates){
+    const k = normKey(c);
+    if(map.has(k)) return map.get(k);
+  }
+  for(const c of candidates){
+    const ck = normKey(c);
+    for(const h of headerList){
+      if(normKey(h).includes(ck)) return h;
+    }
+  }
+  return null;
 }
-function saveJSON(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
+function detectColumns(headerList){
+  return {
+    brand: resolveColumn(headerList, ["brand","make","manufacturer","oem","marque","märke"]),
+    model: resolveColumn(headerList, ["model","carline","vehicle","name","modelname"]),
+    variant: resolveColumn(headerList, ["variant","trim","version","derivative","grade"]),
+    year: resolveColumn(headerList, ["year","modelyear","my"]),
+    segment: resolveColumn(headerList, ["segment","bodysegment","segmentgroup","bodystyle","body"]),
+    vehicleClass: resolveColumn(headerList, ["vehicleclass","pcv_lcv","pcv/lcv","class","vehicletype"]),
+    fuel: resolveColumn(headerList, ["fuel","fueltype","powertrain","energy","drivetrain"])
+  };
+}
+function normBrand(s){
+  return String(s||"")
+    .trim().toUpperCase()
+    .replace(/&/g,"AND")
+    .replace(/\s+/g,"-")
+    .replace(/[^A-Z0-9-]/g,"");
+}
+function normModel(s){
+  return String(s||"")
+    .trim().toUpperCase()
+    .replace(/&/g,"AND")
+    .replace(/[\/\\]+/g,"_")
+    .replace(/\s+/g,"_")
+    .replace(/[^A-Z0-9_-]/g,"");
+}
+function imageUrlForRow(r){
+  const b = cols.brand ? r[cols.brand] : "";
+  const m = cols.model ? r[cols.model] : "";
+  const brand = normBrand(b);
+  const model = normModel(m);
+  if(!brand || !model) return FALLBACK_ICON;
+  return `images/${brand}_${model}.png`;
+}
+function rowDisplayName(r){
+  const b = cols.brand ? r[cols.brand] : "";
+  const m = cols.model ? r[cols.model] : "";
+  const v = cols.variant ? r[cols.variant] : "";
+  const y = cols.year ? r[cols.year] : "";
+  const base = [b,m].filter(Boolean).join(" ").trim();
+  const extra = [y,v].filter(Boolean).join(" ").trim();
+  return (base + (extra ? (" " + extra) : "")).trim() || r.__id || "Vehicle";
+}
+function rowSubline(r){
+  const seg = cols.segment ? r[cols.segment] : "";
+  const vc  = cols.vehicleClass ? r[cols.vehicleClass] : "";
+  const fuel= cols.fuel ? r[cols.fuel] : "";
+  return [seg,vc,fuel].filter(Boolean).join(" • ");
+}
 
-/** -----------------------------
- *  5) Multipliers
- *  ----------------------------- */
-let multMap = loadJSON(MULT_KEY, {});
-function getMultiplier(id) {
-  const m = multMap[id];
+/** numeric parsing for contribution */
+function parseNumeric(v){
+  if(v == null) return null;
+  if(typeof v === "number" && Number.isFinite(v)) return v;
+  const s0 = String(v).trim();
+  if(!s0 || s0 === "—") return null;
+
+  // range like 536–641 or 536-641
+  const rm = s0.match(/(-?\d+(?:[.,]\d+)?)\s*[–-]\s*(-?\d+(?:[.,]\d+)?)/);
+  if(rm){
+    const a = parseFloat(rm[1].replace(",", "."));
+    const b = parseFloat(rm[2].replace(",", "."));
+    if(Number.isFinite(a) && Number.isFinite(b)) return (a+b)/2;
+  }
+
+  // keep digits, commas, dots, minus
+  let s = s0.replace(/[^\d.,\-]/g,"");
+  if(!s) return null;
+
+  // decide decimal separator if both present
+  const lastDot = s.lastIndexOf(".");
+  const lastComma = s.lastIndexOf(",");
+  if(lastDot !== -1 && lastComma !== -1){
+    if(lastDot > lastComma){
+      // dot decimal, remove commas
+      s = s.replace(/,/g,"");
+    }else{
+      // comma decimal, remove dots, replace comma with dot
+      s = s.replace(/\./g,"").replace(/,/g,".");
+    }
+  }else if(lastComma !== -1 && lastDot === -1){
+    // treat comma as decimal
+    s = s.replace(/,/g,".");
+  }else{
+    // dot decimal or integer; leave as-is
+  }
+
+  const num = parseFloat(s);
+  return Number.isFinite(num) ? num : null;
+}
+
+/** local storage helpers */
+function loadJSON(key, fallback){
+  try{ const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; }
+  catch{ return fallback; }
+}
+function saveJSON(key, val){
+  localStorage.setItem(key, JSON.stringify(val));
+}
+
+/** multipliers by field */
+function getMultiplier(field){
+  const m = multMap[field];
   return (m == null || m === "") ? 0 : Number(m);
 }
-function setMultiplier(id, val) {
-  multMap[id] = val;
+function setMultiplier(field, val){
+  multMap[field] = val;
   saveJSON(MULT_KEY, multMap);
 }
 
-/** -----------------------------
- *  6) Column order + visibility
- *  ----------------------------- */
-const defaultColState = models.map(m => ({ key:m.key, visible:true }));
-let colState = loadJSON(COL_KEY, defaultColState);
-
-for (const m of models) {
-  if (!colState.find(c => c.key === m.key)) colState.push({ key:m.key, visible:true });
-}
-function saveColState() { saveJSON(COL_KEY, colState); }
-function visibleModels() {
-  return colState
-    .filter(c => c.visible)
-    .map(c => models.find(m => m.key === c.key));
+/** model column state */
+function saveColState(){ saveJSON(COL_KEY, colState); }
+function visibleModels(){
+  return colState.filter(c => c.visible).map(c => selectedRows.find(r => r.__id === c.key));
 }
 
-/** -----------------------------
- *  7) Parsing helpers
- *  ----------------------------- */
-function parseObserved(v) {
-  if (v == null) return null;
-  if (typeof v === "number") return v;
-  const s = String(v).trim();
-  if (s === "" || s === "—") return null;
+/** ============================
+ *  LOAD + PREP
+ *  ============================ */
+async function loadCSV(){
+  const res = await fetch(CSV_PATH, { cache:"no-store" });
+  if(!res.ok) throw new Error(`Failed to load ${CSV_PATH} (${res.status})`);
+  const text = await res.text();
+  const parsed = Papa.parse(text, { header:true, skipEmptyLines:true });
+  headers = parsed.meta?.fields || Object.keys(parsed.data?.[0] || {});
+  cols = detectColumns(headers);
 
-  const rangeMatch = s.match(/^(-?\d+(\.\d+)?)\s*[–-]\s*(-?\d+(\.\d+)?)/);
-  if (rangeMatch) {
-    const a = parseFloat(rangeMatch[1]);
-    const b = parseFloat(rangeMatch[3]);
-    if (Number.isFinite(a) && Number.isFinite(b)) return (a + b)/2;
+  // enrich rows with stable __id
+  const idCol = resolveColumn(headers, ["id","vehicle_id","product_id","uuid","key"]);
+  rows = (parsed.data || []).map((r, idx) => {
+    const b = cols.brand ? r[cols.brand] : "";
+    const m = cols.model ? r[cols.model] : "";
+    const stable = (idCol && r[idCol]) ? String(r[idCol]) : `${normBrand(b)}_${normModel(m)}_${idx}`;
+    return { ...r, __id: stable, __idx: idx };
+  });
+}
+
+function loadSelection(){
+  const ids = loadJSON(SELECTION_KEY, []);
+  selectedIds = Array.isArray(ids) ? ids : [];
+  if(!selectedIds.length){
+    // fallback: pick first 5 so page isn't empty
+    selectedIds = rows.slice(0,5).map(r => r.__id);
   }
-  const num = parseFloat(s.replace(",", "."));
-  if (Number.isFinite(num)) return num;
-  return null;
+
+  // keep selection order
+  const map = new Map(rows.map(r => [r.__id, r]));
+  selectedRows = selectedIds.map(id => map.get(id)).filter(Boolean);
+
+  // model columns (order + visibility)
+  const defaultState = selectedRows.map(r => ({ key:r.__id, visible:true }));
+  colState = loadJSON(COL_KEY, defaultState);
+
+  // ensure any new ones appear
+  for(const r of selectedRows){
+    if(!colState.find(c => c.key === r.__id)) colState.push({ key:r.__id, visible:true });
+  }
+
+  // multipliers
+  multMap = loadJSON(MULT_KEY, {});
 }
 
-/** -----------------------------
- *  8) Render
- *  ----------------------------- */
-const thead = document.getElementById("thead");
-const tbody = document.getElementById("tbody");
-const tfoot = document.getElementById("tfoot");
-const topSummary = document.getElementById("topSummary");
-const filterInput = document.getElementById("filterInput");
+function buildFields(){
+  // Every CSV column becomes a "fact row"
+  // We exclude internal columns.
+  fields = headers.filter(h => h && !String(h).startsWith("__"));
+}
+
+/** ============================
+ *  UI: column panel
+ *  ============================ */
 const colList = document.getElementById("colList");
-
-let lastTotals = {};
-
-function renderColumnPanel() {
+function renderColumnPanel(){
   colList.innerHTML = "";
-  for (const c of colState) {
-    const model = models.find(m => m.key === c.key);
+  for(const c of colState){
+    const r = selectedRows.find(x => x.__id === c.key);
+    if(!r) continue;
+    const label = rowDisplayName(r);
+
     const wrap = document.createElement("label");
     wrap.className = "col-item";
     wrap.innerHTML = `
       <input type="checkbox" data-key="${c.key}" ${c.visible ? "checked":""}/>
-      <span>${model.label}</span>
+      <span>${label}</span>
     `;
     wrap.querySelector("input").addEventListener("change", e => {
       const key = e.target.dataset.key;
@@ -354,98 +443,120 @@ function renderColumnPanel() {
   }
 }
 
-function render() {
+/** ============================
+ *  RENDER TABLE
+ *  ============================ */
+const thead = document.getElementById("thead");
+const tbody = document.getElementById("tbody");
+const tfoot = document.getElementById("tfoot");
+const topSummary = document.getElementById("topSummary");
+const filterInput = document.getElementById("filterInput");
+
+function render(){
   renderColumnPanel();
 
   const filter = filterInput.value.trim().toLowerCase();
-  const vis = visibleModels();
+  const vis = visibleModels().filter(Boolean);
 
+  // header
   thead.innerHTML = `
     <tr>
-      <th style="width:280px;">Fact</th>
-      <th style="width:80px;">Unit</th>
-      <th style="width:110px;">Multiplier</th>
-      ${vis.map(m => `
-        <th class="model-col" draggable="true" data-key="${m.key}">
-          ${m.label}<div class="drag-hint">drag to reorder</div>
-        </th>`).join("")}
+      <th style="width:360px;">Field (CSV column)</th>
+      <th style="width:120px;" class="center">Multiplier</th>
+      ${vis.map(r => {
+        const img = imageUrlForRow(r);
+        const name = rowDisplayName(r);
+        const sub = rowSubline(r);
+        return `
+          <th class="model-col" draggable="true" data-key="${r.__id}" style="min-width:220px;">
+            <div class="headModel">
+              <img src="${img}" onerror="this.src='${FALLBACK_ICON}'" alt="${name}"/>
+              <div class="t">
+                <div class="name">${escapeHtml(name)}</div>
+                <div class="sub">${escapeHtml(sub || "")}</div>
+              </div>
+            </div>
+          </th>
+        `;
+      }).join("")}
     </tr>
   `;
-
   attachHeaderDnD();
 
+  // body
   tbody.innerHTML = "";
-  let totals = Object.fromEntries(vis.map(m => [m.key, 0]));
+  const totals = Object.fromEntries(vis.map(r => [r.__id, 0]));
 
-  for (const [id, name, unit] of facts) {
-    if (filter && !(`${id} ${name} ${unit}`.toLowerCase().includes(filter))) continue;
+  for(const field of fields){
+    if(filter && !String(field).toLowerCase().includes(filter)) continue;
 
-    const mult = getMultiplier(id);
+    const mult = getMultiplier(field);
+    const cells = vis.map(r => {
+      const raw = r[field];
+      const num = parseNumeric(raw);
+      const contrib = (num != null) ? num * mult : null;
+      if(contrib != null) totals[r.__id] += contrib;
 
-    const cells = vis.map(m => {
-      const observedKey =
-        baseModels.find(b=>m.label.includes(b.label.split(" (")[0]))?.key || m.key;
-      const raw = observed[observedKey]?.[id] ?? null;
-
-      const val = parseObserved(raw);
-      const contrib = (val != null) ? val * mult : null;
-      if (contrib != null) totals[m.key] += contrib;
-
-      const displayVal = (raw == null) ? "—" : raw;
+      const displayVal = (raw == null || String(raw).trim()==="") ? "—" : String(raw);
       const displayContrib = (contrib == null) ? "—" : contrib.toFixed(3);
       const cls = (contrib == null) ? "" : (contrib < 0 ? "neg" : "contrib");
 
       return `
         <td class="num">
-          <div>${displayVal}</div>
-          <div class="${cls}" style="font-size:11px;">${displayContrib}</div>
+          <div>${escapeHtml(displayVal)}</div>
+          <div class="${cls}" style="font-size:11px;">${escapeHtml(displayContrib)}</div>
         </td>
       `;
     }).join("");
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td><div><strong>${id}. ${name}</strong></div></td>
-      <td class="center unit">${unit || ""}</td>
+      <td><strong>${escapeHtml(field)}</strong></td>
       <td class="center">
-        <input class="mult" type="number" min="-1000" max="1000" step="0.001" data-id="${id}" value="${mult}">
+        <input class="mult" type="number" step="0.001" min="-1000" max="1000"
+               data-field="${escapeAttr(field)}" value="${mult}">
       </td>
       ${cells}
     `;
     tbody.appendChild(tr);
   }
 
+  // footer totals
   tfoot.innerHTML = `
     <tr class="total-row">
-      <td colspan="3">Total weighted value</td>
-      ${vis.map(m => `<td class="num">${totals[m.key].toFixed(3)}</td>`).join("")}
+      <td colspan="2">Total weighted value</td>
+      ${vis.map(r => `<td class="num">${totals[r.__id].toFixed(3)}</td>`).join("")}
     </tr>
   `;
 
-  topSummary.innerHTML = vis.map(m => `
+  // summary
+  topSummary.innerHTML = vis.map(r => `
     <div class="card">
-      <div class="label">${m.label}</div>
-      <div class="value">${totals[m.key].toFixed(3)}</div>
+      <div class="label">${escapeHtml(rowDisplayName(r))}</div>
+      <div class="value">${totals[r.__id].toFixed(3)}</div>
+      <div class="note">${escapeHtml(rowSubline(r) || r.__id)}</div>
     </div>
   `).join("");
 
   lastTotals = totals;
 
+  // multiplier input handlers
   document.querySelectorAll("input.mult").forEach(inp => {
     inp.addEventListener("input", e => {
-      const id = Number(e.target.dataset.id);
+      const field = e.target.dataset.field;
       let v = Number(e.target.value);
-      if (!Number.isFinite(v)) v = 0;
-      if (v > 1000) v = 1000;
-      if (v < -1000) v = -1000;
+      if(!Number.isFinite(v)) v = 0;
+      if(v > 1000) v = 1000;
+      if(v < -1000) v = -1000;
       e.target.value = v;
-      setMultiplier(id, v);
+      setMultiplier(field, v);
       render();
     });
   });
 }
 
-function attachHeaderDnD() {
+/** drag reorder model columns */
+function attachHeaderDnD(){
   const headers = [...thead.querySelectorAll("th.model-col")];
   let dragKey = null;
 
@@ -466,107 +577,128 @@ function attachHeaderDnD() {
     h.addEventListener("drop", e => {
       e.preventDefault();
       const targetKey = h.dataset.key;
-      if (!dragKey || dragKey === targetKey) return;
+      if(!dragKey || dragKey === targetKey) return;
 
       const fromIdx = colState.findIndex(c => c.key === dragKey);
       const toIdx   = colState.findIndex(c => c.key === targetKey);
       const [moved] = colState.splice(fromIdx, 1);
       colState.splice(toIdx, 0, moved);
-
       saveColState();
       render();
     });
   });
 }
 
-render();
+/** ============================
+ *  EXCEL EXPORT (AS DISPLAYED)
+ *  - One model column per selected model (in current visible order)
+ *  - Each cell: raw + newline + contrib
+ *  - Respects field filter
+ *  ============================ */
+document.getElementById("exportBtn").onclick = () => {
+  const vis = visibleModels().filter(Boolean);
+  const filter = filterInput.value.trim().toLowerCase();
 
-/** -----------------------------
- *  9) Toolbar buttons
- *  ----------------------------- */
+  const headerRow = ["Field", "Multiplier", ...vis.map(r => rowDisplayName(r))];
+  const aoa = [headerRow];
+
+  for(const field of fields){
+    if(filter && !String(field).toLowerCase().includes(filter)) continue;
+
+    const mult = getMultiplier(field);
+    const row = [field, mult];
+
+    for(const r of vis){
+      const raw = r[field];
+      const num = parseNumeric(raw);
+      const contrib = (num != null) ? num * mult : null;
+
+      const displayVal = (raw == null || String(raw).trim()==="") ? "—" : String(raw);
+      const displayContrib = (contrib == null) ? "—" : contrib.toFixed(3);
+
+      row.push(`${displayVal}\n${displayContrib}`);
+    }
+    aoa.push(row);
+  }
+
+  // totals row
+  const totalsRow = ["Total weighted value", "", ...vis.map(r => (lastTotals[r.__id] ?? 0).toFixed(3))];
+  aoa.push(totalsRow);
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+  // widths
+  ws["!cols"] = [
+    { wch: 34 }, // Field
+    { wch: 12 }, // Multiplier
+    ...vis.map(() => ({ wch: 26 }))
+  ];
+
+  XLSX.utils.book_append_sheet(wb, ws, "Comparison");
+  const filename = `egaux_compare_${new Date().toISOString().slice(0,10)}.xlsx`;
+  XLSX.writeFile(wb, filename);
+};
+
+/** ============================
+ *  TOOLBAR BUTTONS
+ *  ============================ */
 document.getElementById("resetBtn").onclick = () => {
   multMap = {};
   saveJSON(MULT_KEY, multMap);
   render();
 };
 
-document.getElementById("setSampleBtn").onclick = () => {
-  const sample = {
-    1: +10,
-    30: +20,
-    37: +25,
-    46: +8,
-    54: +0.01,
-    60: -30,
-    74: -15,
-    75: -5,
-    147:+50,
-    143:+5,
-    152:+8
-  };
-  multMap = {...multMap, ...sample};
+document.getElementById("sampleBtn").onclick = () => {
+  // sample multipliers on a few likely columns (if present)
+  const sample = {};
+  for(const h of headers){
+    const k = normKey(h);
+    if(k.includes("price") || k.includes("msrp")) sample[h] = -0.0001;
+    if(k.includes("range")) sample[h] = +1;
+    if(k.includes("power") || k.includes("kw") || k.includes("hp")) sample[h] = +0.1;
+    if(k.includes("weight")) sample[h] = -0.01;
+    if(k.includes("co2")) sample[h] = -1;
+  }
+  multMap = { ...multMap, ...sample };
   saveJSON(MULT_KEY, multMap);
   render();
 };
 
 filterInput.addEventListener("input", render);
 
-/** -----------------------------
- *  10) Excel Export — "as displayed"
- *  - One column per model (same visible order)
- *  - Cell shows raw + newline + contribution
- *  - Respects current row filter
- *  ----------------------------- */
-document.getElementById("exportBtn").onclick = () => {
-  const vis = visibleModels();
-  const filter = filterInput.value.trim().toLowerCase();
+/** ============================
+ *  SAFETY: escape helpers
+ *  ============================ */
+function escapeHtml(s){
+  return String(s ?? "")
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;")
+    .replace(/'/g,"&#039;");
+}
+function escapeAttr(s){
+  return String(s ?? "").replace(/"/g,"&quot;");
+}
 
-  const header = ["Fact", "Unit", "Multiplier"];
-  vis.forEach(m => header.push(m.label));
-  const rows = [header];
-
-  for (const [id, name, unit] of facts) {
-    if (filter && !(`${id} ${name} ${unit}`.toLowerCase().includes(filter))) continue;
-
-    const mult = getMultiplier(id);
-    const row = [`${id}. ${name}`, unit || "", mult];
-
-    vis.forEach(m => {
-      const observedKey =
-        baseModels.find(b => m.label.includes(b.label.split(" (")[0]))?.key || m.key;
-
-      const raw = observed[observedKey]?.[id] ?? null;
-      const val = parseObserved(raw);
-      const contrib = (val != null) ? val * mult : null;
-
-      const displayVal = (raw == null) ? "—" : String(raw);
-      const displayContrib = (contrib == null) ? "—" : contrib.toFixed(3);
-
-      row.push(`${displayVal}\n${displayContrib}`);
-    });
-
-    rows.push(row);
+/** ============================
+ *  INIT
+ *  ============================ */
+(async function init(){
+  try{
+    await loadCSV();
+    loadSelection();
+    buildFields();
+    render();
+  }catch(err){
+    console.error(err);
+    alert(
+      "Could not load Product_data_filled_updated.csv.\n" +
+      "Make sure it is deployed next to compare.html."
+    );
   }
-
-  const totalsRow = ["Total weighted value", "", ""];
-  vis.forEach(m => totalsRow.push((lastTotals[m.key] ?? 0).toFixed(3)));
-  rows.push(totalsRow);
-
-  const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.aoa_to_sheet(rows);
-
-  ws["!cols"] = [
-    { wch: 40 }, // Fact
-    { wch: 10 }, // Unit
-    { wch: 12 }, // Multiplier
-    ...vis.map(() => ({ wch: 22 })) // Model columns
-  ];
-
-  XLSX.utils.book_append_sheet(wb, ws, "Comparison");
-
-  const filename = `egaux_comparison_${new Date().toISOString().slice(0,10)}.xlsx`;
-  XLSX.writeFile(wb, filename);
-};
+})();
 </script>
 </body>
 </html>

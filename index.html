@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Egaux — Vehicle Selection</title>
 
-  <!-- CSV parser -->
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
   <style>
@@ -53,6 +52,7 @@
       align-items:flex-end;
       justify-content:space-between;
       gap:12px;
+      flex-wrap:wrap;
     }
     .panel header .title{
       font-weight:900;
@@ -70,17 +70,6 @@
       overflow:auto;
     }
 
-    /* Filters */
-    .kpi{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      margin-bottom:10px;
-      font-size:12px;
-      color:var(--muted);
-      font-weight:650;
-    }
     .badge{
       background:#f2f3f5;
       border:1px solid var(--line);
@@ -89,7 +78,10 @@
       font-weight:800;
       color:#111;
       font-size:12px;
+      white-space:nowrap;
     }
+
+    /* Filters */
     .group{ margin:12px 0 18px; }
     .label{
       font-weight:900;
@@ -148,7 +140,7 @@
       font-weight:900;
     }
 
-    /* Center ring */
+    /* Center ring (NO start button) */
     .ringWrap{
       height:100%;
       display:grid;
@@ -191,6 +183,7 @@
       inset:0;
       display:grid;
       place-items:center;
+      padding-top:10px;
     }
     .ring{
       width:78%;
@@ -260,39 +253,6 @@
       box-shadow: inset 0 0 0 1px #111, var(--shadow-soft);
     }
 
-    .startBtn{
-      position:absolute;
-      width:140px;height:140px;
-      border-radius:999px;
-      border:1px solid #cfcfcf;
-      background:
-        radial-gradient(circle at 35% 30%, #ffe2b6, #d57b1f);
-      font-weight:950;
-      letter-spacing:1px;
-      cursor:pointer;
-      box-shadow: inset 0 8px 14px rgba(255,255,255,.35),
-                  0 14px 40px rgba(0,0,0,.15);
-      display:grid;
-      place-items:center;
-      text-align:center;
-      user-select:none;
-    }
-    .startBtn span{
-      display:block;
-      font-size:22px;
-      color:#111;
-      line-height:1.05;
-    }
-    .startBtn em{
-      display:block;
-      font-style:normal;
-      font-weight:900;
-      font-size:10px;
-      opacity:.8;
-      margin-top:2px;
-      letter-spacing:.18em;
-    }
-
     /* Models grid */
     .grid{
       display:grid;
@@ -359,12 +319,13 @@
       letter-spacing:.02em;
     }
 
-    .execBar{
+    .footerBar{
       padding:12px 14px;
       border-top:1px solid var(--line);
       background:#fff;
+      display:grid;
+      gap:10px;
     }
-    .field{ margin-top:10px; }
     .field label{
       display:block;
       font-size:12px;
@@ -383,7 +344,7 @@
     <header>
       <div>
         <div class="title">Filters</div>
-        <div class="sub">All models visible by default</div>
+        <div class="sub">Brand/model shown once</div>
       </div>
       <div class="badge" id="shownBadge">0 shown</div>
     </header>
@@ -425,15 +386,7 @@
       </div>
 
       <div class="ringStage">
-        <div class="ring" id="ring">
-          <button class="startBtn" id="startBtn" title="Go to comparison">
-            <div>
-              <span>START</span>
-              <em>EXECUTE</em>
-            </div>
-          </button>
-          <!-- slots injected by JS -->
-        </div>
+        <div class="ring" id="ring"></div>
       </div>
     </div>
   </section>
@@ -443,7 +396,7 @@
     <header>
       <div>
         <div class="title">Models</div>
-        <div class="sub">Click to add, drag to place</div>
+        <div class="sub">Unique by Brand/Model</div>
       </div>
       <div class="badge" id="dataBadge">CSV</div>
     </header>
@@ -452,7 +405,7 @@
       <div class="grid" id="grid"></div>
     </div>
 
-    <div class="execBar">
+    <div class="footerBar">
       <div class="field">
         <label>Report style</label>
         <select id="reportStyle">
@@ -463,13 +416,11 @@
       </div>
 
       <div class="field">
-        <label>Notes / filter name</label>
+        <label>Notes / selection name</label>
         <input id="notes" placeholder="e.g., Nordic EV comp set Q1"/>
       </div>
 
-      <div class="field">
-        <button class="btn" id="executeBtn">Execute analysis</button>
-      </div>
+      <button class="btn" id="openCompareBtn">Open comparison</button>
     </div>
   </main>
 
@@ -480,29 +431,31 @@
  *  CONFIG
  *  ============================ */
 const CSV_PATH = "Product_data_filled_updated.csv";
-const COMPARE_PAGE = "compare.html"; // if you rename file -> update this
+const COMPARE_PAGE = "compare.html";
 const SLOT_COUNT = 10;
 
-// fallback icon (single icon for all missing car images)
+// fallback icon (one icon for all missing)
 const FALLBACK_ICON = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEYAAAA9CAYAAAAQyx+GAAAAAXNSR0IArs4c6QAAAKFJREFUeF7t2TEKwDAQRNH//1o9qQmQJYl0kM2o8q9bQm2wYkQAAAAAAAAAAAAAAADwq5pY0y0n2k6mG9b0o5w0o8G2o6a9y1y8Qz5l0wQw9c6wX7m4mXq0b6m8v2fY3n8m0o0d9c0p6o3o0o9o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0oAAAAAAAAAAAAAAADgF7wBv7v2a2o3qgAAAABJRU5ErkJggg==";
 
 /** ============================
  *  STATE
  *  ============================ */
-let rawRows = [];
-let rows = []; // enriched rows with __id etc
 let headers = [];
-let cols = {}; // detected columns
+let rawRows = [];
+let rows = [];               // enriched raw rows with __id
+let groups = [];             // unique brand/model groups
+let groupMap = new Map();    // key -> group
+const missingImage = new Set();
+
+let cols = {};
 let filterState = { segment: "", vehicleClass: "", fuel: "" };
-let slots = Array.from({length:SLOT_COUNT}, () => null); // holds row.__id
+let slots = Array.from({length:SLOT_COUNT}, () => null); // stores group.key
 
 /** ============================
  *  UTILS
  *  ============================ */
 function normKey(s){
-  return String(s||"")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g,"");
+  return String(s||"").toLowerCase().replace(/[^a-z0-9]+/g,"");
 }
 function resolveColumn(headerList, candidates){
   const map = new Map(headerList.map(h => [normKey(h), h]));
@@ -510,7 +463,6 @@ function resolveColumn(headerList, candidates){
     const k = normKey(c);
     if(map.has(k)) return map.get(k);
   }
-  // fuzzy: contains
   for(const c of candidates){
     const ck = normKey(c);
     for(const h of headerList){
@@ -531,30 +483,20 @@ function detectColumns(headerList){
   };
 }
 function normBrand(s){
-  return String(s||"")
-    .trim()
-    .toUpperCase()
+  return String(s||"").trim().toUpperCase()
     .replace(/&/g,"AND")
     .replace(/\s+/g,"-")
     .replace(/[^A-Z0-9-]/g,"");
 }
 function normModel(s){
-  return String(s||"")
-    .trim()
-    .toUpperCase()
+  return String(s||"").trim().toUpperCase()
     .replace(/&/g,"AND")
     .replace(/[\/\\]+/g,"_")
     .replace(/\s+/g,"_")
     .replace(/[^A-Z0-9_-]/g,"");
 }
-function rowDisplayName(r){
-  const b = cols.brand ? r[cols.brand] : "";
-  const m = cols.model ? r[cols.model] : "";
-  const v = cols.variant ? r[cols.variant] : "";
-  const y = cols.year ? r[cols.year] : "";
-  const base = [b,m].filter(Boolean).join(" ").trim();
-  const extra = [y,v].filter(Boolean).join(" ").trim();
-  return (base + (extra ? (" " + extra) : "")).trim() || `Vehicle ${r.__idx+1}`;
+function groupTitle(g){
+  return `${g.brand||""} ${g.model||""}`.trim() || g.key;
 }
 function rowSubline(r){
   const seg = cols.segment ? r[cols.segment] : "";
@@ -562,52 +504,44 @@ function rowSubline(r){
   const fuel= cols.fuel ? r[cols.fuel] : "";
   return [seg,vc,fuel].filter(Boolean).join(" • ");
 }
-function imageUrlForRow(r){
-  const b = cols.brand ? r[cols.brand] : "";
-  const m = cols.model ? r[cols.model] : "";
-  const brand = normBrand(b);
-  const model = normModel(m);
+function imageUrlForGroup(g){
+  if(missingImage.has(g.key)) return FALLBACK_ICON;
+  const brand = normBrand(g.brand);
+  const model = normModel(g.model);
   if(!brand || !model) return FALLBACK_ICON;
-  return `images/${brand}_${model}.png`;
+  return `./images/${brand}_${model}.png`;
 }
-function selectedIds(){
-  return slots.filter(Boolean);
-}
-function isSelected(id){
-  return slots.includes(id);
-}
-function firstEmptySlot(){
-  return slots.findIndex(x => !x);
-}
-function removeId(id){
-  const idx = slots.findIndex(x => x === id);
+
+function selectedKeys(){ return slots.filter(Boolean); }
+function isSelected(key){ return slots.includes(key); }
+function firstEmptySlot(){ return slots.findIndex(x => !x); }
+function removeKey(key){
+  const idx = slots.findIndex(x => x === key);
   if(idx >= 0){
     slots[idx] = null;
     persistSelection();
     renderAll();
   }
 }
-function placeInSlot(slotIndex, id){
-  if(!id) return;
-  // if already placed elsewhere, move it
-  const from = slots.findIndex(x => x === id);
+function placeInSlot(slotIndex, key){
+  if(!key) return;
+  const from = slots.findIndex(x => x === key);
   if(from >= 0) slots[from] = null;
-
-  slots[slotIndex] = id;
+  slots[slotIndex] = key;
   persistSelection();
   renderAll();
 }
-function addToFirstEmpty(id){
+function addToFirstEmpty(key){
   const i = firstEmptySlot();
   if(i < 0){
     alert(`Ring is full (${SLOT_COUNT}). Remove one first.`);
     return;
   }
-  placeInSlot(i, id);
+  placeInSlot(i, key);
 }
-function toggleSelect(id){
-  if(isSelected(id)) removeId(id);
-  else addToFirstEmpty(id);
+function toggleSelect(key){
+  if(isSelected(key)) removeKey(key);
+  else addToFirstEmpty(key);
 }
 
 /** ============================
@@ -618,18 +552,36 @@ async function loadCSV(){
   if(!res.ok) throw new Error(`Failed to load ${CSV_PATH} (${res.status})`);
   const text = await res.text();
   const parsed = Papa.parse(text, { header:true, skipEmptyLines:true });
-  if(parsed.errors?.length) console.warn("CSV parse warnings:", parsed.errors);
+  headers = parsed.meta?.fields || Object.keys(parsed.data?.[0] || {});
   rawRows = parsed.data || [];
-  headers = parsed.meta?.fields || Object.keys(rawRows[0] || {});
   cols = detectColumns(headers);
 
+  // enrich rows with stable __id per csv-row
+  const idCol = resolveColumn(headers, ["id","vehicle_id","product_id","uuid","key"]);
   rows = rawRows.map((r, idx) => {
-    const idCol = resolveColumn(headers, ["id","vehicle_id","product_id","uuid","key"]);
     const b = cols.brand ? r[cols.brand] : "";
     const m = cols.model ? r[cols.model] : "";
-    const stable = idCol && r[idCol] ? String(r[idCol]) : `${normBrand(b)}_${normModel(m)}_${idx}`;
+    const stable = (idCol && r[idCol]) ? String(r[idCol]) : `${normBrand(b)}_${normModel(m)}_${idx}`;
     return { ...r, __id: stable, __idx: idx };
   });
+
+  // build unique brand/model groups
+  groupMap = new Map();
+  const brandCol = cols.brand;
+  const modelCol = cols.model;
+
+  for(const r of rows){
+    const brand = brandCol ? (r[brandCol] || "") : "";
+    const model = modelCol ? (r[modelCol] || "") : "";
+    const key = `${normBrand(brand)}_${normModel(model)}`.trim();
+    if(!key || key === "_") continue;
+
+    if(!groupMap.has(key)){
+      groupMap.set(key, { key, brand, model, sampleRow: r, rows: [] });
+    }
+    groupMap.get(key).rows.push(r);
+  }
+  groups = Array.from(groupMap.values()).sort((a,b)=>groupTitle(a).localeCompare(groupTitle(b)));
 
   document.getElementById("dataBadge").textContent = CSV_PATH;
 }
@@ -637,12 +589,14 @@ async function loadCSV(){
 /** ============================
  *  FILTERS
  *  ============================ */
-function applyFilters(list){
+function applyFiltersGroups(list){
   const segCol = cols.segment;
   const vcCol = cols.vehicleClass;
   const fuelCol = cols.fuel;
 
-  return list.filter(r => {
+  return list.filter(g => {
+    const r = g.sampleRow;
+
     if(filterState.segment && segCol){
       if(String(r[segCol]||"") !== filterState.segment) return false;
     }
@@ -655,9 +609,10 @@ function applyFilters(list){
     return true;
   });
 }
-function uniqueValues(list, col){
+function uniqueValuesFromGroups(col){
   const s = new Set();
-  for(const r of list){
+  for(const g of groups){
+    const r = g.sampleRow;
     const v = (r[col] ?? "").toString().trim();
     if(v) s.add(v);
   }
@@ -669,9 +624,10 @@ function buildSegmentList(){
   el.innerHTML = "";
 
   const segCol = cols.segment;
+
   const allBtn = document.createElement("div");
   allBtn.className = "segitem" + (filterState.segment==="" ? " active" : "");
-  allBtn.innerHTML = `<span>All segments</span><small>${rows.length} models</small>`;
+  allBtn.innerHTML = `<span>All segments</span><small>${groups.length} models</small>`;
   allBtn.onclick = () => { filterState.segment=""; renderAll(); };
   el.appendChild(allBtn);
 
@@ -686,11 +642,12 @@ function buildSegmentList(){
   }
 
   const counts = new Map();
-  for(const r of rows){
-    const v = String(r[segCol]||"").trim();
+  for(const g of groups){
+    const v = String(g.sampleRow[segCol]||"").trim();
     if(!v) continue;
     counts.set(v, (counts.get(v)||0)+1);
   }
+
   const segs = Array.from(counts.keys()).sort((a,b)=>a.localeCompare(b));
   for(const s of segs){
     const item = document.createElement("div");
@@ -704,19 +661,20 @@ function buildSegmentList(){
 function buildFuelSelect(){
   const fuelCol = cols.fuel;
   const sel = document.getElementById("fuelSelect");
-  const current = filterState.fuel;
   sel.innerHTML = `<option value="">All fuels</option>`;
+
   if(!fuelCol){
     sel.disabled = true;
     return;
   }
   sel.disabled = false;
-  const vals = uniqueValues(rows, fuelCol);
+
+  const vals = uniqueValuesFromGroups(fuelCol);
   for(const v of vals){
     const opt = document.createElement("option");
     opt.value = v;
     opt.textContent = v;
-    if(v === current) opt.selected = true;
+    if(v === filterState.fuel) opt.selected = true;
     sel.appendChild(opt);
   }
 }
@@ -726,25 +684,21 @@ function buildFuelSelect(){
  *  ============================ */
 function initRingSlots(){
   const ring = document.getElementById("ring");
-  // remove existing slots
-  ring.querySelectorAll(".slot").forEach(n=>n.remove());
+  ring.innerHTML = "";
 
-  // angles start at top
   for(let i=0;i<SLOT_COUNT;i++){
     const slot = document.createElement("div");
     slot.className = "slot empty";
     slot.dataset.slot = String(i);
     slot.textContent = "Empty";
 
-    // position
     const angle = (-90 + (360 / SLOT_COUNT) * i) * Math.PI/180;
-    const radius = 42; // percent
+    const radius = 42;
     const cx = 50 + radius * Math.cos(angle);
     const cy = 50 + radius * Math.sin(angle);
     slot.style.left = cx + "%";
     slot.style.top  = cy + "%";
 
-    // DnD handlers
     slot.addEventListener("dragover", e => {
       e.preventDefault();
       slot.classList.add("over");
@@ -753,9 +707,9 @@ function initRingSlots(){
     slot.addEventListener("drop", e => {
       e.preventDefault();
       slot.classList.remove("over");
-      const id = e.dataTransfer.getData("text/plain");
+      const key = e.dataTransfer.getData("text/plain");
       const idx = Number(slot.dataset.slot);
-      if(id) placeInSlot(idx, id);
+      if(key) placeInSlot(idx, key);
     });
 
     ring.appendChild(slot);
@@ -763,7 +717,7 @@ function initRingSlots(){
 }
 
 function renderRing(){
-  const picked = selectedIds().length;
+  const picked = selectedKeys().length;
   document.getElementById("pickedBadge").textContent = `${picked}/${SLOT_COUNT} picked`;
 
   const ring = document.getElementById("ring");
@@ -771,22 +725,29 @@ function renderRing(){
 
   slotEls.forEach(el => {
     const idx = Number(el.dataset.slot);
-    const id = slots[idx];
+    const key = slots[idx];
+
     el.innerHTML = "";
-    el.className = "slot" + (id ? "" : " empty");
-    if(!id){
+    el.className = "slot" + (key ? "" : " empty");
+
+    if(!key){
       el.textContent = "Empty";
       return;
     }
-    const r = rows.find(x => x.__id === id);
-    const name = r ? rowDisplayName(r) : id;
+
+    const g = groupMap.get(key);
+    const name = g ? groupTitle(g) : key;
 
     const thumb = document.createElement("div");
     thumb.className = "thumb";
     const img = document.createElement("img");
     img.alt = name;
-    img.src = r ? imageUrlForRow(r) : FALLBACK_ICON;
-    img.onerror = () => { img.src = FALLBACK_ICON; };
+    img.loading = "lazy";
+    img.src = g ? imageUrlForGroup(g) : FALLBACK_ICON;
+    img.onerror = () => {
+      missingImage.add(key);
+      img.src = FALLBACK_ICON;
+    };
     thumb.appendChild(img);
 
     const title = document.createElement("div");
@@ -799,7 +760,7 @@ function renderRing(){
     x.title = "Remove";
     x.onclick = (ev) => {
       ev.stopPropagation();
-      removeId(id);
+      removeKey(key);
     };
 
     el.appendChild(thumb);
@@ -809,54 +770,60 @@ function renderRing(){
 }
 
 /** ============================
- *  MODELS GRID
+ *  MODELS GRID (GROUPED)
  *  ============================ */
 function renderGrid(){
   const grid = document.getElementById("grid");
   grid.innerHTML = "";
 
-  const filtered = applyFilters(rows);
+  const filtered = applyFiltersGroups(groups);
   document.getElementById("shownBadge").textContent = `${filtered.length} shown`;
 
-  for(const r of filtered){
-    const id = r.__id;
+  for(const g of filtered){
+    const key = g.key;
+
     const card = document.createElement("div");
-    card.className = "card" + (isSelected(id) ? " selected" : "");
+    card.className = "card" + (isSelected(key) ? " selected" : "");
     card.draggable = true;
 
     card.addEventListener("dragstart", e => {
-      e.dataTransfer.setData("text/plain", id);
+      e.dataTransfer.setData("text/plain", key);
       e.dataTransfer.effectAllowed = "move";
     });
 
-    card.onclick = () => toggleSelect(id);
+    card.onclick = () => toggleSelect(key);
 
     const t = document.createElement("div");
     t.className = "thumb";
     const img = document.createElement("img");
-    img.alt = rowDisplayName(r);
-    img.src = imageUrlForRow(r);
-    img.onerror = () => { img.src = FALLBACK_ICON; };
+    img.alt = groupTitle(g);
+    img.loading = "lazy";
+    img.src = imageUrlForGroup(g);
+    img.onerror = () => {
+      missingImage.add(key);
+      img.src = FALLBACK_ICON;
+    };
     t.appendChild(img);
 
     const meta = document.createElement("div");
     meta.className = "meta";
+
     const name = document.createElement("div");
     name.className = "name";
-    name.textContent = rowDisplayName(r);
+    name.textContent = groupTitle(g);
 
     const sub = document.createElement("div");
     sub.className = "sub";
-    sub.textContent = rowSubline(r) || "—";
+    sub.textContent = rowSubline(g.sampleRow) || "—";
 
     const tags = document.createElement("div");
     tags.className = "tags";
 
     const segCol = cols.segment, vcCol = cols.vehicleClass, fuelCol = cols.fuel;
     const tagVals = [
-      segCol ? r[segCol] : null,
-      vcCol ? (String(r[vcCol]||"").toUpperCase()) : null,
-      fuelCol ? r[fuelCol] : null
+      segCol ? g.sampleRow[segCol] : null,
+      vcCol ? String(g.sampleRow[vcCol]||"").toUpperCase() : null,
+      fuelCol ? g.sampleRow[fuelCol] : null
     ].filter(Boolean).slice(0,3);
 
     for(const tv of tagVals){
@@ -865,6 +832,10 @@ function renderGrid(){
       tag.textContent = String(tv);
       tags.appendChild(tag);
     }
+    const trimTag = document.createElement("span");
+    trimTag.className = "tag";
+    trimTag.textContent = `${g.rows.length} trims`;
+    tags.appendChild(trimTag);
 
     meta.appendChild(name);
     meta.appendChild(sub);
@@ -879,11 +850,11 @@ function renderGrid(){
 /** ============================
  *  PERSISTENCE + NAV
  *  ============================ */
-const SELECTION_KEY = "egaux_selected_ids_v1";
+const SELECTION_KEY = "egaux_selected_groupkeys_v1";
 const META_KEY = "egaux_selection_meta_v1";
 
 function persistSelection(){
-  localStorage.setItem(SELECTION_KEY, JSON.stringify(selectedIds()));
+  localStorage.setItem(SELECTION_KEY, JSON.stringify(selectedKeys()));
   localStorage.setItem(META_KEY, JSON.stringify({
     reportStyle: document.getElementById("reportStyle").value,
     notes: document.getElementById("notes").value,
@@ -894,11 +865,11 @@ function loadPersistedSelection(){
   try{
     const raw = localStorage.getItem(SELECTION_KEY);
     if(!raw) return;
-    const ids = JSON.parse(raw);
-    if(Array.isArray(ids) && ids.length){
+    const keys = JSON.parse(raw);
+    if(Array.isArray(keys) && keys.length){
       slots = Array.from({length:SLOT_COUNT}, () => null);
-      for(let i=0;i<Math.min(ids.length,SLOT_COUNT);i++){
-        slots[i] = ids[i];
+      for(let i=0;i<Math.min(keys.length,SLOT_COUNT);i++){
+        slots[i] = keys[i];
       }
     }
   }catch{}
@@ -908,10 +879,9 @@ function loadPersistedSelection(){
     if(meta.notes) document.getElementById("notes").value = meta.notes;
   }catch{}
 }
-
-function goCompare(){
-  const ids = selectedIds();
-  if(!ids.length){
+function openCompare(){
+  const keys = selectedKeys();
+  if(!keys.length){
     alert("Pick at least one model for comparison.");
     return;
   }
@@ -935,7 +905,6 @@ function renderAll(){
 (async function init(){
   initRingSlots();
 
-  // UI events
   document.getElementById("vehicleClassSelect").addEventListener("change", (e)=>{
     filterState.vehicleClass = e.target.value;
     renderAll();
@@ -951,10 +920,8 @@ function renderAll(){
     renderAll();
   };
 
-  document.getElementById("startBtn").onclick = goCompare;
-  document.getElementById("executeBtn").onclick = goCompare;
+  document.getElementById("openCompareBtn").onclick = openCompare;
 
-  // load data
   try{
     await loadCSV();
     loadPersistedSelection();
@@ -962,10 +929,7 @@ function renderAll(){
   }catch(err){
     console.error(err);
     document.getElementById("dataBadge").textContent = "CSV missing";
-    alert(
-      "Could not load Product_data_filled_updated.csv.\n" +
-      "Make sure it is in the same folder as index.html (and deployed)."
-    );
+    alert("Could not load Product_data_filled_updated.csv. Ensure it is deployed next to index.html.");
   }
 })();
 </script>

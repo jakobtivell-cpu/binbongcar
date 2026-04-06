@@ -1,0 +1,87 @@
+{
+  "oemId": "porsche-se",
+  "brand": "Porsche",
+  "country": "SE",
+  "language": "sv",
+  "currency": "SEK",
+  "baseUrl": "https://www.porsche.com/sweden/",
+  "vatIncluded": true,
+  "fetchDefaults": {
+    "strategy": "static",
+    "jsWaitTimeout": 30000
+  },
+  "models": [
+    {
+      "id": "macan",
+      "modelName": "Macan",
+      "bodyType": "SUV",
+      "pages": [
+        {
+          "url": "https://www.porsche.com/sweden/models/macan/",
+          "role": "overview",
+          "strategy": "static"
+        }
+      ]
+    },
+    {
+      "id": "911",
+      "modelName": "911",
+      "bodyType": "Coupé",
+      "pages": [
+        {
+          "url": "https://www.porsche.com/sweden/models/911/",
+          "role": "overview",
+          "strategy": "static"
+        }
+      ]
+    },
+    {
+      "id": "718",
+      "modelName": "718",
+      "bodyType": "Sports",
+      "pages": [
+        {
+          "url": "https://www.porsche.com/sweden/models/718/",
+          "role": "overview",
+          "strategy": "static"
+        }
+      ]
+    },
+    {
+      "id": "taycan",
+      "modelName": "Taycan",
+      "bodyType": "Sedan",
+      "pages": [
+        {
+          "url": "https://www.porsche.com/sweden/models/taycan/",
+          "role": "overview",
+          "strategy": "static"
+        }
+      ]
+    },
+    {
+      "id": "panamera",
+      "modelName": "Panamera",
+      "bodyType": "Sedan",
+      "pages": [
+        {
+          "url": "https://www.porsche.com/sweden/models/panamera/",
+          "role": "overview",
+          "strategy": "static"
+        }
+      ]
+    },
+    {
+      "id": "cayenne",
+      "modelName": "Cayenne",
+      "bodyType": "SUV",
+      "pages": [
+        {
+          "url": "https://www.porsche.com/sweden/models/cayenne/",
+          "role": "overview",
+          "strategy": "static"
+        }
+      ]
+    }
+  ]
+}

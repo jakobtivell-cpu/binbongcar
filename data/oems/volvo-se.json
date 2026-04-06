@@ -1,0 +1,15 @@
+{
+  "oemId": "volvo-se",
+  "brand": "Volvo",
+  "country": "SE",
+  "language": "sv",
+  "currency": "SEK",
+  "baseUrl": "https://www.volvocars.com/se/",
+  "vatIncluded": true,
+  "fetchDefaults": {
+    "strategy": "static",
+    "jsWaitTimeout": 30000
+  },
+  "models": [],
+  "_note": "Disabled in oem-registry until Prompt 10 — populate models and enable."
+}

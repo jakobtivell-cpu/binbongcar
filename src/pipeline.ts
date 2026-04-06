@@ -1,11 +1,19 @@
 import { loadOemConfig, loadOemRegistry } from "./config/oem-loader";
 import { finalizeCarVariant } from "./extraction/finalize-variant";
 import { fetchPage } from "./fetchers/fetch-manager";
+import { fetchStaticHtml } from "./fetchers/static-html";
 import { writeOemCsvFile } from "./output/csv-writer";
 import type { CarVariant, CliOptions } from "./models/types";
+import {
+  buildPorscheGermanyDimensionFetchUrls,
+  mergePorscheGermanyDimensionsIntoVariants,
+  parsePorscheGermanyDimensionMap,
+} from "./parsers/oem/porsche-de-dimensions";
+import { derivePorscheModelRangeIdFromUrl } from "./parsers/oem/porsche-se";
 import { parseFetchedPage } from "./parsers/parser-manager";
 import { SchemaRegistry } from "./models/schema-registry";
-import { rootLogger } from "./utils/logger";
+import { rootLogger, type Logger } from "./utils/logger";
+import { buildVariantItemId } from "./utils/variant-item-id";
 
 export interface PipelineRunSummary {
   oemIds: string[];
@@ -15,6 +23,39 @@ export interface PipelineRunSummary {
   dryRun: boolean;
   csvPaths: string[];
   variantCounts: Record<string, number>;
+}
+
+async function tryMergePorscheGermanyDimensions(
+  modelVariants: CarVariant[],
+  m: { modelName: string; pages: { url: string; role: string }[] },
+  opts: CliOptions,
+  log: Logger,
+): Promise<void> {
+  if (modelVariants.length === 0) return;
+  const overviewUrl =
+    m.pages.find((p) => p.role === "overview")?.url ?? m.pages[0]?.url;
+  if (!overviewUrl) return;
+  const rangeId = derivePorscheModelRangeIdFromUrl(overviewUrl);
+  const urls = buildPorscheGermanyDimensionFetchUrls(rangeId, overviewUrl);
+  for (const du of urls) {
+    const res = await fetchStaticHtml(du, { slow: opts.slow });
+    if (res.error || typeof res.content !== "string") {
+      log.debug(
+        `[${m.modelName}] Porsche DE dimensions: skip ${du} (${res.error || "empty"})`,
+      );
+      continue;
+    }
+    const map = parsePorscheGermanyDimensionMap(res.content);
+    if (map.size === 0) continue;
+    mergePorscheGermanyDimensionsIntoVariants(modelVariants, map, du);
+    log.info(
+      `[${m.modelName}] Porsche DE static dimensions: merged ${map.size} derivate(s) from ${du}`,
+    );
+    return;
+  }
+  log.debug(
+    `[${m.modelName}] Porsche DE dimensions: no usable page in ${urls.length} URL(s)`,
+  );
 }
 
 function formatVariantLogLine(v: CarVariant): string {
@@ -64,6 +105,8 @@ export async function runPipeline(opts: CliOptions): Promise<PipelineRunSummary>
 
       if (opts.dryRun) continue;
 
+      const modelVariants: CarVariant[] = [];
+
       for (const p of m.pages) {
         const res = await fetchPage(p, {
           oemId: entry.id,
@@ -98,6 +141,7 @@ export async function runPipeline(opts: CliOptions): Promise<PipelineRunSummary>
         for (const partial of partials) {
           const v = finalizeCarVariant(partial, retrievalDate);
           oemVariants.push(v);
+          modelVariants.push(v);
           if (opts.verbose) {
             log.info(
               `    [${m.modelName}] Variant: ${v.facts[2] ?? ""} ${v.facts[3] ? String(v.facts[3]) : "(base)"} — ${formatVariantLogLine(v)}`,
@@ -105,9 +149,17 @@ export async function runPipeline(opts: CliOptions): Promise<PipelineRunSummary>
           }
         }
       }
+
+      if (entry.id === "porsche-se" && modelVariants.length > 0) {
+        await tryMergePorscheGermanyDimensions(modelVariants, m, opts, log);
+      }
     }
 
     variantCounts[entry.id] = oemVariants.length;
+
+    for (const v of oemVariants) {
+      v.facts[183] = buildVariantItemId(entry.id, v.uniqueKey);
+    }
 
     if (!opts.dryRun && oemVariants.length > 0) {
       const out = writeOemCsvFile(entry.id, oemVariants, registry, rootDir);

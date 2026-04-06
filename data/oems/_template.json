@@ -1,0 +1,40 @@
+{
+  "_docs": {
+    "oemId": "Stable id matching filename without .json (e.g. acme-se).",
+    "models": "Each model lists known source URLs; no discovery crawling.",
+    "pages.role": "overview | specs | price | equipment | pdf",
+    "pages.strategy": "static | js | pdf | api — see fetch-manager fallback ladder in Prompt 4."
+  },
+  "oemId": "template-se",
+  "brand": "Template",
+  "country": "SE",
+  "language": "sv",
+  "currency": "SEK",
+  "baseUrl": "https://example.com",
+  "vatIncluded": true,
+  "fetchDefaults": {
+    "strategy": "static",
+    "jsWaitTimeout": 30000
+  },
+  "models": [
+    {
+      "id": "example-model",
+      "modelName": "Example",
+      "bodyType": "SUV",
+      "pages": [
+        {
+          "url": "https://example.com/sv/models/example/overview",
+          "role": "overview",
+          "strategy": "static"
+        },
+        {
+          "url": "https://example.com/sv/models/example/specs",
+          "role": "specs",
+          "strategy": "static",
+          "note": "Replace with real OEM URLs before running."
+        }
+      ],
+      "parsingHints": {}
+    }
+  ]
+}

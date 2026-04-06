@@ -1,0 +1,24 @@
+{
+  "oems": [
+    {
+      "id": "bmw-se",
+      "configFile": "oems/bmw-se.json",
+      "enabled": true
+    },
+    {
+      "id": "mercedes-benz-se",
+      "configFile": "oems/mercedes-benz-se.json",
+      "enabled": true
+    },
+    {
+      "id": "porsche-se",
+      "configFile": "oems/porsche-se.json",
+      "enabled": true
+    },
+    {
+      "id": "volvo-se",
+      "configFile": "oems/volvo-se.json",
+      "enabled": false
+    }
+  ]
+}

@@ -30,6 +30,29 @@ export interface RangeParse {
 }
 
 /** "524 – 612 km" or "20,4 – 17,7 kWh/100 km" → bounds (Swedish commas). */
+/**
+ * German Porsche dimension strings: "4.784 mm" (dot = thousands) → meters.
+ * Also handles plain mm integers.
+ */
+export function germanMmDimensionToMeters(raw: string): number | null {
+  const s = raw.trim().replace(/\u00a0/g, " ");
+  const m = s.match(/^([\d.]+)\s*mm$/i);
+  if (!m) return null;
+  const num = m[1].trim();
+  if (/^\d{1,2}\.\d{3}$/.test(num)) {
+    const mm = parseInt(num.replace(".", ""), 10);
+    return Number.isFinite(mm) ? mm / 1000 : null;
+  }
+  if (/^\d{1,2},\d{3}$/.test(num)) {
+    const mm = parseInt(num.replace(",", ""), 10);
+    return Number.isFinite(mm) ? mm / 1000 : null;
+  }
+  const n = normaliseSwedishNumber(num.replace(/\./g, "").replace(",", "."));
+  if (n === null) return null;
+  if (n > 50) return n / 1000;
+  return n;
+}
+
 export function parseRangeValue(raw: string): RangeParse {
   const m = raw.match(
     /(\d+(?:,\d+)?)\s*[–-]\s*(\d+(?:,\d+)?)/u,

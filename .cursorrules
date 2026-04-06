@@ -1,0 +1,90 @@
+You are building a production-minded Node.js + TypeScript scraper for Swedish-market OEM passenger car product data extraction.
+
+NON-NEGOTIABLE CONSTRAINTS:
+- Public OEM websites only. No API keys for scraping (API keys only for optional LLM challenger pass).
+- Use cheerio for HTML parsing as the primary method.
+- Use pdf-parse for PDF text extraction (OEM spec sheets, price list PDFs).
+- Script must run with: npx ts-node scrape.ts
+- Output must be: one UTF-8 CSV per OEM (183 schema columns including fact_id 183 Variant item ID + 3 audit columns, one row per marketed variant) plus a merge-safe results.json.
+- The system accepts ANY Swedish-market OEM as input — it is NOT hardcoded to BMW/Mercedes/Porsche. OEM selection is a runtime parameter (--oem flag or all enabled OEMs).
+- Different OEMs have radically different site architectures (React SPAs, JS-heavy OneWeb, Storyblok SSR, PDF spec sheets). Parsers must handle HTML tables, JS-rendered content, inline card layouts, embedded JSON, and PDFs.
+- Add robust logging, timeout handling, retry limits, missing-data handling, and parsing-failure handling.
+- Prefer stable architecture over cleverness.
+- Never make large speculative edits without stating the plan first.
+
+BEFORE ANY EDIT, explain:
+1) what files you will create/change
+2) why
+3) what success criteria you will validate
+
+AFTER ANY EDIT, run tests or executable checks where possible and summarize failures.
+
+WORKING STYLE:
+- Keep functions small and named clearly.
+- Separate fetching, parsing, normalisation, merging, validation, and output into distinct modules under src/.
+- Build for reruns and partial reruns (--force to skip cache, --model to run single model).
+- Use deterministic heuristics as the primary extraction method. When heuristics fail on a particular OEM's markup, create an OEM-specific parser in src/parsers/oem/{oem-id}.ts — but keep the generic parsers as the default path.
+- When uncertain about an extracted VALUE, return null with an extractionNote — never fabricate a value. Null over wrong values, always.
+- When uncertain about which VARIANT a value belongs to, do not merge — leave as separate partial rows with a warning note. Wrong merges are worse than duplicate partial rows.
+- Optimize for a repo that can be shown to a demanding technical evaluator.
+
+OEM INPUT MODEL:
+- An OEM is configured via a JSON file in data/oems/{brand}-{country}.json.
+- Each JSON file contains: brand metadata, fetch defaults, and a complete list of models with their page URLs, fetch strategies, and parsing hints.
+- All source URLs are KNOWN UPFRONT and maintained in these editable JSON files. There is no discovery crawling — operators provide the URLs.
+- A default registry of enabled OEMs ships in data/oem-registry.json, but the architecture must support adding any new OEM by creating a new JSON config file and optionally an OEM-specific parser.
+- OEM-specific parsing logic is confined to src/parsers/oem/ — the pipeline code itself is OEM-agnostic.
+
+DATA FILE DISCIPLINE:
+- data/oems/*.json files are DATA ASSETS — never overwrite them programmatically without a backup step.
+- data/translations/sv-to-schema.json is a shared translation file — append new entries, never delete existing ones.
+- data/schema.json defines the 182-field output schema — never modify without updating README.md and bumping the version.
+- When a new Swedish label is encountered during parsing that doesn't match any translation, log a warning with the exact label text so operators can add it to sv-to-schema.json manually.
+
+FETCH STRATEGY POLICY:
+- cheerio (static HTML) is the primary and default fetch method.
+- Playwright is an OPTIONAL fallback for JS-rendered pages. It must be an optional dependency — the project must work without it installed.
+- Each page URL in the OEM config declares its fetch strategy: "static", "js", "pdf", or "api".
+- If a page is configured as "static" but returns empty/no-data content, the fetch-manager should automatically try upgrading to "js" (if Playwright is available). Log this.
+- If a page is configured as "js" but Playwright is not installed, fall back to "static" and log a warning. Never crash.
+- If Playwright is not available at runtime, skip gracefully and continue to the next page/model.
+- In logs, always indicate when Playwright is being used: "[ModelName] Using Playwright for JS-rendered content on {url}"
+- For PDF pages, always verify magic bytes (%PDF header) before attempting pdf-parse.
+
+EXTRACTION PHILOSOPHY:
+- The goal is to extract every marketed variant for every configured OEM model. A variant that exists on the OEM website but is missing from output is a bug, not an acceptable outcome.
+- Data comes from multiple source pages per model (overview, specs, price, equipment, PDF). The merger must combine these with explicit priority rules and track which URL provided each field value.
+- Boolean fields (fact_ids 125-182) represent STANDARD EQUIPMENT only. Set 1 only if the OEM explicitly states "standard" or "ingår". Set 0 if "tillval" or "extra". Leave null if ambiguous. Never infer from brand reputation or other trims.
+- Prices must be MSRP including Swedish VAT (moms). "Från" / "Starting at" prices are acceptable. Exclude leasing, campaign, and "as configured" prices.
+- Swedish decimal commas → decimal points. Strip "kr", "SEK", thousands separators. Normalise units to match schema (meters for dimensions, kW and hp for power, etc.).
+
+CROSS-OEM CONSISTENCY:
+- All OEMs must produce CSVs with identical 183-column schema (incl. Variant item ID) plus 3 audit columns (source_url_main, source_urls_supporting, retrieval_date).
+- The normaliser must produce consistent units regardless of how the OEM presents data (BMW "hk", Porsche "HK", Mercedes "hk" — all map to fact_id 47 in hp).
+- Variant unique keys must be globally unique: Make × Model × Powerplant × Gearbox × Specification × Option_packs × Battery_size.
+
+OEM-SPECIFIC PARSING NOTES:
+- BMW Sweden (bmw.se): React SPA. All pages need strategy "js". Tech data on /tekniska-data.html pages with variants as table columns. Specs as rows, variants as columns.
+- Mercedes-Benz Sweden (mercedes-benz.se): OneWeb platform, heavily JS-rendered. ~35 model families including AMG and Maybach sub-brands. Price list pages may link to PDFs. Make field must reflect sub-brand (Mercedes-Benz / Mercedes-AMG / Mercedes-Maybach). "Ny" vs current generation overlap.
+- Porsche Sweden (porsche.com/sweden): Storyblok SSR — rich inline data on model cards. Default strategy "static" works for family pages. Variant name IS the specification. Power figures are "Overboost with Launch Control" — note this in extractionNotes. "HK" not "hk".
+
+VALIDATION RULES:
+- Required fields: fact_ids 1 (Make), 2 (Model), 4 (Powerplant), 5 (Gearbox) must be non-null.
+- MSRP (fact_id 121) should be present — warn if missing, don't fail.
+- Confidence scoring: start at 100, deduct for missing recommended fields (-5), missing required fields (-15), caught implausible values (-10).
+- Cross-field consistency: battery > 0 → electric range should exist; "xDrive"/"4MATIC"/"Fyrhjulsdrift" → AWD = 1; pure EV → CO2 = 0.
+- Implausible ranges: 0-100 accel must be 0-60s, top speed 0-500 km/h, power 0-5000 hp. Outside range → null + extractionNote.
+
+GIT DISCIPLINE:
+- Commit after every successful fix: git add -A && git commit -m "fix: [description]"
+- Never leave working code uncommitted across sessions.
+
+NON-REGRESSION (maintainer / CI hygiene):
+- Never modify src/utils/http-client.ts without running npx jest before and after.
+- Never change data/schema.json without updating README.md and bumping version in package.json.
+- Never remove a fetcher strategy or parser fallback without a documented reason in the PR.
+- data/oems/*.json — never overwrite programmatically without backup.
+- data/translations/sv-to-schema.json — append-only, never delete translations.
+- All new parsing logic must have a corresponding test in tests/ with OEM fixture files.
+- tsc --noEmit must pass before any commit.
+- CSV output must always have exactly 186 columns (183 + 3 audit) — validate in tests.

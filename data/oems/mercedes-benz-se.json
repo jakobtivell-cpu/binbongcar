@@ -1,0 +1,30 @@
+{
+  "oemId": "mercedes-benz-se",
+  "brand": "Mercedes-Benz",
+  "country": "SE",
+  "language": "sv",
+  "currency": "SEK",
+  "baseUrl": "https://www.mercedes-benz.se",
+  "vatIncluded": true,
+  "fetchDefaults": {
+    "strategy": "js",
+    "jsWaitSelector": ".owc-stage, .wb-module",
+    "jsWaitTimeout": 45000
+  },
+  "models": [
+    {
+      "id": "c-saloon",
+      "modelName": "C-Klass Sedan",
+      "bodyType": "Sedan",
+      "pages": [
+        {
+          "url": "https://www.mercedes-benz.se/passengercars/models/saloon/c-class/overview.html",
+          "role": "overview",
+          "strategy": "js",
+          "note": "Placeholder — verify on live site (Prompt 3)."
+        }
+      ],
+      "parsingHints": {}
+    }
+  ]
+}

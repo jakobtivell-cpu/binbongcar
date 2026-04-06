@@ -15,7 +15,7 @@ function formatCell(value: unknown): string {
 }
 
 /**
- * Writes one CSV per OEM run: 182 schema columns + 3 audit, UTF-8 BOM, comma-separated.
+ * Writes one CSV per OEM run: 183 schema columns + 3 audit, UTF-8 BOM, comma-separated.
  */
 export function writeOemCsvFile(
   oemId: string,

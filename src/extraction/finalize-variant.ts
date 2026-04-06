@@ -15,5 +15,6 @@ export function finalizeCarVariant(
     extractionNotes: partial.extractionNotes ?? [],
     confidence: partial.confidence ?? 70,
     fieldSources: partial.fieldSources ?? {},
+    oemInternal: partial.oemInternal,
   };
 }

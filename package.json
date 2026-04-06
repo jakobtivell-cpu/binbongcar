@@ -1,6 +1,6 @@
 {
   "name": "oem-car-scraper",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Swedish-market OEM passenger car product data scraper (Cheerio-first, optional Playwright)",
   "scripts": {

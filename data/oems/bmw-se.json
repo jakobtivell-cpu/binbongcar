@@ -1,0 +1,36 @@
+{
+  "oemId": "bmw-se",
+  "brand": "BMW",
+  "country": "SE",
+  "language": "sv",
+  "currency": "SEK",
+  "baseUrl": "https://www.bmw.se",
+  "vatIncluded": true,
+  "fetchDefaults": {
+    "strategy": "js",
+    "jsWaitTimeout": 45000
+  },
+  "models": [
+    {
+      "id": "3-sedan",
+      "modelName": "3-serien Sedan",
+      "bodyType": "Sedan",
+      "pages": [
+        {
+          "url": "https://www.bmw.se/sv/modeller/3-serien/sedan/oversikt.html",
+          "role": "overview",
+          "strategy": "js",
+          "note": "Placeholder — verify on live site (Prompt 3)."
+        },
+        {
+          "url": "https://www.bmw.se/sv/modeller/3-serien/sedan/tekniska-data.html",
+          "role": "specs",
+          "strategy": "js"
+        }
+      ],
+      "parsingHints": {
+        "pricePattern": "Från ([\\d\\s]+) kr"
+      }
+    }
+  ]
+}

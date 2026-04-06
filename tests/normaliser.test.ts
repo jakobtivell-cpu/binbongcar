@@ -1,4 +1,5 @@
 import {
+  germanMmDimensionToMeters,
   normalisePrice,
   normaliseSwedishNumber,
   parseRangeValue,
@@ -22,6 +23,12 @@ describe("normaliser (Porsche formats)", () => {
       kw: 380,
       hp: 516,
     });
+  });
+
+  it("germanMmDimensionToMeters (DE Porsche)", () => {
+    expect(germanMmDimensionToMeters("4.784 mm")).toBe(4.784);
+    expect(germanMmDimensionToMeters("2.893 mm")).toBe(2.893);
+    expect(germanMmDimensionToMeters("1.624 mm")).toBe(1.624);
   });
 
   it("parseRangeValue", () => {

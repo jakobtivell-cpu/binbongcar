@@ -29,13 +29,24 @@ function parseGearbox(chunk: string): string {
 
 function driveLayoutAndAwd(wheelDrive: string): { layout: string; awd: 0 | 1 } {
   const w = wheelDrive.toLowerCase();
-  if (w.includes("fyrhjuls") || w.includes("awd") || w.includes("4matic")) {
+  if (
+    w.includes("fyrhjuls") ||
+    w.includes("awd") ||
+    w.includes("4matic") ||
+    w.includes("allrad") ||
+    w.includes("all-wheel")
+  ) {
     return { layout: "AWD", awd: 1 };
   }
-  if (w.includes("bakhjul") || w.includes("rwd")) {
+  if (
+    w.includes("bakhjul") ||
+    w.includes("rwd") ||
+    w.includes("heckantrieb") ||
+    w.includes("rear-wheel")
+  ) {
     return { layout: "RWD", awd: 0 };
   }
-  if (w.includes("framhjuls") || w.includes("fwd")) {
+  if (w.includes("framhjuls") || w.includes("fwd") || w.includes("frontantrieb")) {
     return { layout: "FWD", awd: 0 };
   }
   return { layout: wheelDrive || "", awd: 0 };
@@ -131,6 +142,7 @@ export function parsePorscheModelOverviewHtml(
 
     const modelNameM = chunk.match(/&quot;modelName&quot;:\[0,&quot;([^&]*)&quot;\]/);
     const modelRangeM = chunk.match(/&quot;modelRange&quot;:\[0,&quot;([^&]*)&quot;\]/);
+    const modelTypeM = chunk.match(/&quot;modelType&quot;:\[0,&quot;([A-Z0-9]+)&quot;\]/);
     const wheelDriveM = chunk.match(/&quot;wheelDrive&quot;:\[0,&quot;([^&]*)&quot;\]/);
     const fuelTextM = chunk.match(/&quot;fuelTypeText&quot;:\[0,&quot;([^&]*)&quot;\]/);
 
@@ -211,6 +223,9 @@ export function parsePorscheModelOverviewHtml(
           .filter((k) => facts[Number(k)] != null && facts[Number(k)] !== "")
           .map((k) => [Number(k), ctx.sourceUrl]),
       ),
+      oemInternal: modelTypeM?.[1]
+        ? { porscheDerivateCode: modelTypeM[1] }
+        : undefined,
     });
   }
 

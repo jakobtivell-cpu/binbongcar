@@ -75,6 +75,21 @@
       min-height:0;
       backdrop-filter: blur(8px);
     }
+    .scenario-row{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+    .scenario-row input, .scenario-row select{
+      padding:8px 10px;
+      font-size:12px;
+      border:1px solid var(--line);
+      border-radius:9px;
+      background:#fff;
+      font-weight:700;
+    }
+    .scenario-row input{ min-width:220px; }
     .lens{
       display:flex;
       gap:6px;
@@ -127,6 +142,30 @@
     .summary .label{ font-weight:900; margin-bottom:2px; }
     .summary .value{ font-variant-numeric: tabular-nums; font-size:14px; font-weight:950; }
     .summary .meta{ color:var(--muted); font-size:11px; font-weight:700; margin-top:2px; }
+    .summary .risk{ color:#b45309; font-size:11px; font-weight:800; margin-top:2px; }
+
+    .exec{
+      background:var(--panel);
+      border:1px solid var(--line);
+      border-radius:14px;
+      box-shadow:var(--shadow);
+      padding:10px 12px;
+      display:grid;
+      grid-template-columns: 1.2fr 1fr 1fr;
+      gap:10px;
+      backdrop-filter: blur(8px);
+    }
+    .exec .card{
+      background:linear-gradient(180deg, #ffffff, #f8fbff);
+      border:1px solid #e8eef8;
+      border-radius:10px;
+      padding:10px;
+      box-shadow:var(--shadow-soft);
+    }
+    .exec .label{ font-size:11px; text-transform:uppercase; letter-spacing:.05em; font-weight:850; color:var(--muted); }
+    .exec .value{ font-size:18px; font-weight:950; margin-top:4px; }
+    .exec ul{ margin:8px 0 0 16px; padding:0; font-size:12px; }
+    .exec li{ margin:4px 0; }
 
     .table-wrap{
       background:var(--panel);
@@ -207,11 +246,12 @@
     }
     @media (max-width: 980px){
       .wrap{
-        grid-template-rows:auto auto auto minmax(520px, 1fr);
+        grid-template-rows:auto auto auto auto minmax(520px, 1fr);
       }
       .toolbar input[type="text"]{
         width:100%;
       }
+      .exec{ grid-template-columns:1fr; }
     }
   </style>
 </head>
@@ -239,8 +279,16 @@
       <summary>Models (hide/show + drag headers)</summary>
       <div id="colList" class="col-list"></div>
     </details>
+    <div class="scenario-row">
+      <input id="scenarioName" type="text" placeholder="Scenario name (e.g. 2026 EV disruption)"/>
+      <select id="scenarioSelect"><option value="">Load scenario...</option></select>
+      <button class="btn secondary" id="saveScenarioBtn">Save scenario</button>
+      <button class="btn secondary" id="deleteScenarioBtn">Delete scenario</button>
+      <button class="btn secondary" id="shareStateBtn">Copy share link</button>
+    </div>
   </div>
 
+  <div id="execSummary" class="exec"></div>
   <div id="topSummary" class="summary"></div>
 
   <div class="table-wrap">
@@ -263,6 +311,7 @@ const META_KEY = "egaux_selection_meta_v1";
 const MULT_KEY = "egaux_field_multipliers_v1";
 const COL_KEY  = "egaux_compare_modelcols_v1";
 const TRIM_KEY = "egaux_active_trim_v1"; // groupKey -> activeRow.__id
+const SCENARIOS_KEY = "egaux_scenarios_v1";
 
 const FALLBACK_ICON = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEYAAAA9CAYAAAAQyx+GAAAAAXNSR0IArs4c6QAAAKFJREFUeF7t2TEKwDAQRNH//1o9qQmQJYl0kM2o8q9bQm2wYkQAAAAAAAAAAAAAAADwq5pY0y0n2k6mG9b0o5w0o8G2o6a9y1y8Qz5l0wQw9c6wX7m4mXq0b6m8v2fY3n8m0o0d9c0p6o3o0o9o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0oAAAAAAAAAAAAAAADgF7wBv7v2a2o3qgAAAABJRU5ErkJggg==";
 const missingImage = new Set();
@@ -284,6 +333,7 @@ let multMap = {};
 let colState = [];       // [{key:groupKey, visible:true}]
 let lastTotals = {};
 let activeLens = "custom";
+let scenarioMap = {};
 
 const LENSES = {
   custom: {},
@@ -292,6 +342,20 @@ const LENSES = {
   efficiency: { keywords: { range: 0.9, consumption: -0.7, co2: -1, efficiency: 0.6, price: -0.0004 } },
   practicality: { keywords: { luggage: 0.15, trunk: 0.15, cargo: 0.15, seats: 0.2, width: 0.07, height: 0.07, wheelbase: 0.1 } },
 };
+
+const METRIC_CATALOG = [
+  { id: "price", better: "low", normalize: "minmax", rx: /(msrp|price|pris|listprice|baseprice)/i },
+  { id: "range", better: "high", normalize: "minmax", rx: /(range|wltp|electric.*range)/i },
+  { id: "power", better: "high", normalize: "minmax", rx: /(power|hp|hk|kw)/i },
+  { id: "acceleration", better: "low", normalize: "minmax", rx: /(0[-– ]?100|acceleration)/i },
+  { id: "consumption", better: "low", normalize: "minmax", rx: /(consumption|kwh\/100|l\/100|efficiency)/i },
+  { id: "co2", better: "low", normalize: "minmax", rx: /(co2|emission)/i },
+  { id: "weight", better: "low", normalize: "minmax", rx: /(weight|kerb|mass)/i },
+  { id: "space", better: "high", normalize: "minmax", rx: /(luggage|trunk|cargo|boot)/i },
+  { id: "wheelbase", better: "high", normalize: "minmax", rx: /(wheelbase)/i },
+];
+
+let fieldMeta = {};
 
 /** ============================
  *  UTILS
@@ -384,6 +448,17 @@ function loadJSON(key, fallback){
   catch{ return fallback; }
 }
 function saveJSON(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
+function hostFromUrl(v){
+  try{ return new URL(String(v || "")).host || "n/a"; } catch { return "n/a"; }
+}
+function resolveFieldMeta(){
+  const out = {};
+  for(const h of fields){
+    const hit = METRIC_CATALOG.find((m) => m.rx.test(h));
+    if(hit) out[h] = hit;
+  }
+  fieldMeta = out;
+}
 function applyLens(name){
   activeLens = name;
   if(name === "custom"){
@@ -423,6 +498,77 @@ function renderLensRow(){
     b.onclick = () => applyLens(id);
     row.appendChild(b);
   }
+}
+
+function getScenarioPayload(){
+  return {
+    activeLens,
+    multMap,
+    colState,
+    activeTrimMap,
+    selectedGroupKeys: selectedGroups.map((g) => g.key),
+  };
+}
+function applyScenarioPayload(payload){
+  if(!payload || typeof payload !== "object") return;
+  if(payload.activeLens) activeLens = payload.activeLens;
+  if(payload.multMap) multMap = payload.multMap;
+  if(Array.isArray(payload.colState)) colState = payload.colState;
+  if(payload.activeTrimMap && typeof payload.activeTrimMap === "object") activeTrimMap = payload.activeTrimMap;
+  saveJSON(MULT_KEY, multMap);
+  saveJSON(COL_KEY, colState);
+  saveJSON(TRIM_KEY, activeTrimMap);
+}
+function refreshScenarioSelect(){
+  const sel = document.getElementById("scenarioSelect");
+  sel.innerHTML = `<option value="">Load scenario...</option>`;
+  scenarioMap = loadJSON(SCENARIOS_KEY, {});
+  for(const k of Object.keys(scenarioMap).sort()){
+    const o = document.createElement("option");
+    o.value = k;
+    o.textContent = k;
+    sel.appendChild(o);
+  }
+}
+function saveScenario(){
+  const inp = document.getElementById("scenarioName");
+  const name = String(inp.value || "").trim();
+  if(!name){ alert("Enter a scenario name first."); return; }
+  scenarioMap = loadJSON(SCENARIOS_KEY, {});
+  scenarioMap[name] = { ts: Date.now(), payload: getScenarioPayload() };
+  saveJSON(SCENARIOS_KEY, scenarioMap);
+  refreshScenarioSelect();
+}
+function deleteScenario(){
+  const sel = document.getElementById("scenarioSelect");
+  const name = String(sel.value || "").trim();
+  if(!name) return;
+  scenarioMap = loadJSON(SCENARIOS_KEY, {});
+  delete scenarioMap[name];
+  saveJSON(SCENARIOS_KEY, scenarioMap);
+  refreshScenarioSelect();
+}
+function loadScenarioByName(name){
+  scenarioMap = loadJSON(SCENARIOS_KEY, {});
+  const s = scenarioMap[name];
+  if(!s?.payload) return;
+  applyScenarioPayload(s.payload);
+  renderLensRow();
+  render();
+}
+function encodeStateToHash(){
+  const payload = getScenarioPayload();
+  const raw = JSON.stringify(payload);
+  return btoa(unescape(encodeURIComponent(raw)));
+}
+function tryLoadStateFromHash(){
+  const h = (location.hash || "").replace(/^#state=/, "");
+  if(!h) return;
+  try{
+    const raw = decodeURIComponent(escape(atob(h)));
+    const payload = JSON.parse(raw);
+    applyScenarioPayload(payload);
+  }catch{}
 }
 
 /** multipliers */
@@ -633,18 +779,50 @@ function render(){
   // body
   tbody.innerHTML = "";
   const totals = Object.fromEntries(visGroups.map(g => [g.key, 0]));
+  const fieldDriver = Object.fromEntries(fields.map((f) => [f, 0]));
+  const riskFlags = [];
+  let scoredFieldCount = 0;
+  let scoredValueCount = 0;
+  let totalValueCount = 0;
 
   for(const field of fields){
     if(filter && !String(field).toLowerCase().includes(filter)) continue;
 
     const mult = getMultiplier(field);
 
-    const cells = visGroups.map(g => {
+    const meta = fieldMeta[field];
+    const cellRaw = visGroups.map((g) => {
+      const r = getActiveRowForGroup(g) || {};
+      return parseNumeric(r[field]);
+    });
+    const finiteVals = cellRaw.filter((x) => x != null);
+    const canScore = Boolean(
+      meta &&
+      Math.abs(mult) > 0 &&
+      finiteVals.length >= 2 &&
+      Math.max(...finiteVals) !== Math.min(...finiteVals),
+    );
+    if (canScore) scoredFieldCount += 1;
+
+    const min = finiteVals.length ? Math.min(...finiteVals) : 0;
+    const max = finiteVals.length ? Math.max(...finiteVals) : 0;
+
+    const cells = visGroups.map((g, idx) => {
       const r = getActiveRowForGroup(g) || {};
       const raw = r[field];
       const num = parseNumeric(raw);
-      const contrib = (num != null) ? num * mult : null;
+      totalValueCount += 1;
+      let contrib = null;
+      if(canScore && num != null){
+        const span = max - min;
+        let norm = span === 0 ? 0.5 : (num - min) / span;
+        if(meta?.better === "low") norm = 1 - norm;
+        if(mult < 0) norm = 1 - norm;
+        contrib = norm * Math.abs(mult);
+        scoredValueCount += 1;
+      }
       if(contrib != null) totals[g.key] += contrib;
+      if(contrib != null) fieldDriver[field] += Math.abs(contrib);
 
       const displayVal = (raw == null || String(raw).trim()==="") ? "—" : String(raw);
       const displayContrib = (contrib == null) ? "—" : contrib.toFixed(3);
@@ -679,12 +857,51 @@ function render(){
   `;
 
   // summary
+  const sorted = [...visGroups]
+    .map((g) => ({ g, s: totals[g.key] || 0 }))
+    .sort((a,b) => b.s - a.s);
+  const winner = sorted[0]?.g;
+  const runnerUp = sorted[1]?.g;
+  const gap = sorted.length > 1 ? (sorted[0].s - sorted[1].s) : 0;
+  const topDrivers = Object.entries(fieldDriver)
+    .filter(([,v]) => v > 0)
+    .sort((a,b) => b[1] - a[1])
+    .slice(0, 4);
+  if(scoredFieldCount < 4) riskFlags.push("Low scoring breadth (<4 comparable fields)");
+  if(totalValueCount > 0 && scoredValueCount / totalValueCount < 0.35){
+    riskFlags.push("Sparse numeric coverage; validate missing metrics");
+  }
+  const retrievalDates = new Set(
+    visGroups
+      .map((g) => String((getActiveRowForGroup(g) || {})["retrieval_date"] || "").trim())
+      .filter(Boolean),
+  );
+  if(retrievalDates.size > 1) riskFlags.push("Mixed retrieval dates across compared trims");
+  const exec = document.getElementById("execSummary");
+  exec.innerHTML = `
+    <div class="card">
+      <div class="label">Executive signal</div>
+      <div class="value">${winner ? escapeHtml(groupTitle(winner)) : "—"}</div>
+      <div class="note">Lead gap vs #2: ${gap.toFixed(3)} (${escapeHtml(activeLens)} lens)</div>
+    </div>
+    <div class="card">
+      <div class="label">Top score drivers</div>
+      <ul>${topDrivers.length ? topDrivers.map(([k,v]) => `<li><strong>${escapeHtml(k)}</strong> <span class="note">(${v.toFixed(2)})</span></li>`).join("") : "<li>No scored drivers yet</li>"}</ul>
+    </div>
+    <div class="card">
+      <div class="label">Risk flags</div>
+      <ul>${riskFlags.length ? riskFlags.map((r) => `<li>${escapeHtml(r)}</li>`).join("") : "<li>No critical scoring risks</li>"}</ul>
+    </div>
+  `;
+
   topSummary.innerHTML = visGroups.map(g => `
     <div class="card">
       <div class="label">${escapeHtml(groupTitle(g))}</div>
       <div class="value">${(totals[g.key]||0).toFixed(3)}</div>
       <div class="note">${escapeHtml(trimLabel(getActiveRowForGroup(g)))} </div>
-      <div class="meta">Lens: ${escapeHtml(activeLens)}</div>
+      <div class="meta">Lens: ${escapeHtml(activeLens)} · Source: ${escapeHtml(hostFromUrl((getActiveRowForGroup(g) || {})["source_url_main"]))}</div>
+      <div class="meta">Retrieved: ${escapeHtml((getActiveRowForGroup(g) || {})["retrieval_date"] || "n/a")}</div>
+      ${riskFlags.length ? `<div class="risk">Risk: ${escapeHtml(riskFlags[0])}</div>` : ""}
     </div>
   `).join("");
 
@@ -804,6 +1021,21 @@ document.getElementById("sampleBtn").onclick = () => {
   renderLensRow();
   render();
 };
+document.getElementById("saveScenarioBtn").onclick = saveScenario;
+document.getElementById("deleteScenarioBtn").onclick = deleteScenario;
+document.getElementById("scenarioSelect").onchange = (e) => {
+  const name = String(e.target.value || "");
+  if(name) loadScenarioByName(name);
+};
+document.getElementById("shareStateBtn").onclick = async () => {
+  const url = `${location.origin}${location.pathname}#state=${encodeStateToHash()}`;
+  try{
+    await navigator.clipboard.writeText(url);
+    alert("Share link copied.");
+  }catch{
+    prompt("Copy this link:", url);
+  }
+};
 
 filterInput.addEventListener("input", render);
 
@@ -829,6 +1061,9 @@ function escapeAttr(s){
   try{
     await loadCSV();
     loadSelection();
+    resolveFieldMeta();
+    refreshScenarioSelect();
+    tryLoadStateFromHash();
     renderLensRow();
     render();
   }catch(err){

@@ -400,6 +400,24 @@
       font-weight:750;
       margin:0 0 6px;
     }
+    .presetRow{
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:8px;
+      margin-top:8px;
+    }
+    .mini{
+      border:1px solid var(--line);
+      border-radius:10px;
+      background:#fff;
+      padding:8px 10px;
+      font-size:11px;
+      font-weight:800;
+      cursor:pointer;
+      text-align:left;
+      transition:transform .14s ease, border-color .14s ease;
+    }
+    .mini:hover{ transform:translateY(-1px); border-color:var(--line-strong); }
 
     @media (max-width: 1440px){
       .app{ grid-template-columns:260px 1fr 460px; }
@@ -457,6 +475,15 @@
       </div>
 
       <button class="btn secondary" id="clearFiltersBtn">Clear filters</button>
+      <div class="group">
+        <div class="label">Strategist presets</div>
+        <div class="presetRow">
+          <button class="mini" id="presetPremiumEV">Premium EV set</button>
+          <button class="mini" id="presetSUVBattle">SUV battleground</button>
+          <button class="mini" id="presetPricePressure">Price pressure set</button>
+          <button class="mini" id="presetResetPick">Reset picks</button>
+        </div>
+      </div>
     </div>
   </aside>
 
@@ -657,6 +684,18 @@ function addToFirstEmpty(key){
 function toggleSelect(key){
   if(isSelected(key)) removeKey(key);
   else addToFirstEmpty(key);
+}
+function clearSelection(){
+  slots = Array.from({length:SLOT_COUNT}, () => null);
+  persistSelection();
+  renderAll();
+}
+function setSelectionByPredicate(predicate){
+  const filtered = applyFiltersGroups(groups).filter(predicate).slice(0, SLOT_COUNT);
+  slots = Array.from({length:SLOT_COUNT}, () => null);
+  for(let i=0;i<filtered.length;i++) slots[i] = filtered[i].key;
+  persistSelection();
+  renderAll();
 }
 
 /** ============================
@@ -1067,6 +1106,32 @@ function renderAll(){
   };
 
   document.getElementById("openCompareBtn").onclick = openCompare;
+  document.getElementById("presetResetPick").onclick = clearSelection;
+  document.getElementById("presetPremiumEV").onclick = () => {
+    setSelectionByPredicate((g) => {
+      const fuel = String(cols.fuel ? g.sampleRow[cols.fuel] || "" : "").toLowerCase();
+      const seg = String(cols.segment ? g.sampleRow[cols.segment] || "" : "").toLowerCase();
+      return (fuel.includes("el") || fuel.includes("ev") || fuel.includes("electric")) &&
+        (seg.includes("premium") || seg.includes("d") || seg.includes("e"));
+    });
+  };
+  document.getElementById("presetSUVBattle").onclick = () => {
+    setSelectionByPredicate((g) => {
+      const seg = String(cols.segment ? g.sampleRow[cols.segment] || "" : "").toLowerCase();
+      const model = String(g.model || "").toLowerCase();
+      return seg.includes("suv") || model.includes("suv") || model.includes("cayenne") || model.includes("macan");
+    });
+  };
+  document.getElementById("presetPricePressure").onclick = () => {
+    setSelectionByPredicate((g) => {
+      const pcol = cols.msrp;
+      if(!pcol) return false;
+      const vals = g.rows.map((r) => parseNumeric(r[pcol])).filter((n) => n != null);
+      if(!vals.length) return false;
+      const avg = vals.reduce((a,b) => a+b, 0) / vals.length;
+      return avg >= 300000 && avg <= 1200000;
+    });
+  };
 
   try{
     await loadCSV();

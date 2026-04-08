@@ -1,0 +1,824 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Egaux — Comparison</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js"></script>
+
+  <style>
+    :root{
+      --bg:#f4f7fc;
+      --panel:rgba(255,255,255,.94);
+      --ink:#0b0c0f;
+      --muted:#5f6b83;
+      --line:#dde3ee;
+      --line-strong:#c6d3ea;
+      --shadow:0 16px 40px rgba(16,18,25,.11);
+      --shadow-soft:0 8px 20px rgba(16,18,25,.08);
+      --accent:#1d4ed8;
+    }
+    *{ box-sizing:border-box; }
+    body{
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      margin: 0;
+      background:
+        radial-gradient(1200px 420px at 8% -10%, #eaf1ff, transparent 62%),
+        radial-gradient(900px 360px at 92% -20%, #f4f0ff, transparent 56%),
+        var(--bg);
+      color:var(--ink);
+      min-height:100vh;
+      overflow:auto;
+    }
+    .wrap{
+      display:grid;
+      grid-template-rows:auto auto auto 1fr;
+      gap:10px;
+      padding:14px;
+      height:100vh;
+      min-height:0;
+    }
+    header{
+      background:var(--panel);
+      border:1px solid var(--line);
+      border-radius:14px;
+      padding:12px 14px;
+      box-shadow:var(--shadow);
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      flex-wrap:wrap;
+      backdrop-filter: blur(8px);
+    }
+    h1{ font-size:18px; margin:0; letter-spacing:.2px;}
+    .note{ font-size:12px; color:var(--muted); font-weight:650; }
+
+    .btn{
+      border:0; padding:9px 12px; border-radius:10px;
+      background:linear-gradient(180deg, #1e3a8a, var(--accent)); color:#fff; font-weight:900; cursor:pointer;
+      box-shadow:var(--shadow-soft); letter-spacing:.4px; font-size:12px;
+      transition:transform .14s ease, filter .14s ease;
+    }
+    .btn:hover{ transform:translateY(-1px); filter:brightness(1.04); }
+    .btn.secondary{ background:#fff; color:#111; border:1px solid var(--line); }
+
+    .toolbar{
+      background:var(--panel);
+      border:1px solid var(--line);
+      border-radius:14px;
+      padding:10px;
+      box-shadow:var(--shadow);
+      display:flex; gap:8px; flex-wrap:wrap; align-items:center;
+      min-height:0;
+      backdrop-filter: blur(8px);
+    }
+    .lens{
+      display:flex;
+      gap:6px;
+      flex-wrap:wrap;
+    }
+    .pill{
+      border:1px solid var(--line);
+      background:#fff;
+      color:#111;
+      font-size:11px;
+      font-weight:850;
+      border-radius:999px;
+      padding:7px 10px;
+      cursor:pointer;
+      transition:all .14s ease;
+    }
+    .pill:hover{
+      border-color:var(--line-strong);
+      transform:translateY(-1px);
+    }
+    .pill.active{
+      background:#111;
+      color:#fff;
+      border-color:#111;
+    }
+    .toolbar input[type="text"]{
+      padding:8px 10px; font-size:12px; width:320px;
+      border:1px solid var(--line); border-radius:9px; background:#fff; font-weight:650;
+    }
+    details.columns-panel{
+      border:1px dashed var(--line); padding:6px 8px; border-radius:10px; background:#fff; font-size:12px;
+    }
+    details.columns-panel summary{ cursor:pointer; font-weight:800; }
+    .col-list{ margin-top:6px; display:flex; flex-wrap:wrap; gap:10px; }
+    .col-item{ display:flex; align-items:center; gap:6px; }
+
+    .summary{
+      background:var(--panel);
+      border:1px solid var(--line);
+      border-radius:14px;
+      box-shadow:var(--shadow);
+      padding:8px 10px;
+      display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:8px;
+      font-size:12px;
+    }
+    .summary .card{
+      background:linear-gradient(180deg, #ffffff, #f8fbff); border:1px solid #e8eef8; padding:8px; border-radius:10px;
+      box-shadow:var(--shadow-soft);
+    }
+    .summary .label{ font-weight:900; margin-bottom:2px; }
+    .summary .value{ font-variant-numeric: tabular-nums; font-size:14px; font-weight:950; }
+    .summary .meta{ color:var(--muted); font-size:11px; font-weight:700; margin-top:2px; }
+
+    .table-wrap{
+      background:var(--panel);
+      border:1px solid var(--line);
+      border-radius:14px;
+      box-shadow:var(--shadow);
+      padding:0;
+      overflow:auto;
+      min-height:0;
+      backdrop-filter: blur(8px);
+    }
+
+    table{ border-collapse: collapse; width: 100%; table-layout: fixed; }
+    th, td{ border: 1px solid var(--line); padding: 6px 8px; font-size: 12px; vertical-align: middle; }
+    th{
+      background: #f7faff;
+      position: sticky; top: 0; z-index: 2; user-select:none;
+      font-weight:900;
+    }
+    td:first-child, th:first-child{ position: sticky; left: 0; background: #fff; z-index: 1;}
+    th:first-child{ background:#fafafa; z-index:3;}
+
+    input.mult{
+      width: 86px; padding: 5px 6px; font-size: 12px;
+      border:1px solid var(--line); border-radius:8px; font-weight:850;
+      text-align:right;
+    }
+    .num{ text-align: right; font-variant-numeric: tabular-nums; }
+    .center{ text-align: center; }
+    .total-row td{ font-weight: 950; background: #f7faff; }
+    .contrib{ color:#0a3; font-weight:900;}
+    .neg{ color:#b00; font-weight:900;}
+
+    th.model-col{ cursor: grab; }
+    th.model-col.dragging{ opacity:0.5; }
+
+    .headModel{
+      display:grid;
+      gap:6px;
+    }
+    .headTop{
+      display:flex; align-items:center; gap:8px;
+      min-width:0;
+    }
+    .headTop img{
+      width:44px; height:30px;
+      border-radius:10px;
+      border:1px solid var(--line);
+      background:#eef2ff;
+      object-fit:contain;
+      flex:0 0 auto;
+    }
+    .headTop .t{
+      min-width:0;
+    }
+    .headTop .name{
+      font-weight:950;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .headTop .sub{
+      font-size:10px;
+      color:var(--muted);
+      font-weight:750;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .trimSel{
+      width:100%;
+      border:1px solid var(--line);
+      border-radius:10px;
+      padding:6px 8px;
+      font-size:11px;
+      font-weight:800;
+      background:#fff;
+    }
+    @media (max-width: 980px){
+      .wrap{
+        grid-template-rows:auto auto auto minmax(520px, 1fr);
+      }
+      .toolbar input[type="text"]{
+        width:100%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <h1>Comparison — Trim picked here</h1>
+      <div class="note" id="sourceNote">Source: Product_data_filled_updated.csv</div>
+    </div>
+    <div style="display:flex; gap:8px;">
+      <button class="btn secondary" onclick="window.location.href='index.html'">Back</button>
+      <button class="btn" id="exportBtn">Download Excel</button>
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <button class="btn secondary" id="resetBtn">Reset multipliers</button>
+    <button class="btn secondary" id="sampleBtn">Sample multipliers</button>
+    <div class="lens" id="lensRow"></div>
+    <input id="filterInput" type="text" placeholder="Filter fields (type any CSV column name)"/>
+    <details class="columns-panel">
+      <summary>Models (hide/show + drag headers)</summary>
+      <div id="colList" class="col-list"></div>
+    </details>
+  </div>
+
+  <div id="topSummary" class="summary"></div>
+
+  <div class="table-wrap">
+    <table id="specTable">
+      <thead id="thead"></thead>
+      <tbody id="tbody"></tbody>
+      <tfoot id="tfoot"></tfoot>
+    </table>
+  </div>
+
+</div>
+
+<script>
+/** ============================
+ *  CONFIG
+ *  ============================ */
+const CSV_PATH = "Product_data_filled_updated.csv";
+const SELECTION_KEY = "egaux_selected_groupkeys_v1";
+const META_KEY = "egaux_selection_meta_v1";
+const MULT_KEY = "egaux_field_multipliers_v1";
+const COL_KEY  = "egaux_compare_modelcols_v1";
+const TRIM_KEY = "egaux_active_trim_v1"; // groupKey -> activeRow.__id
+
+const FALLBACK_ICON = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEYAAAA9CAYAAAAQyx+GAAAAAXNSR0IArs4c6QAAAKFJREFUeF7t2TEKwDAQRNH//1o9qQmQJYl0kM2o8q9bQm2wYkQAAAAAAAAAAAAAAADwq5pY0y0n2k6mG9b0o5w0o8G2o6a9y1y8Qz5l0wQw9c6wX7m4mXq0b6m8v2fY3n8m0o0d9c0p6o3o0o9o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0o0oAAAAAAAAAAAAAAADgF7wBv7v2a2o3qgAAAABJRU5ErkJggg==";
+const missingImage = new Set();
+
+/** ============================
+ *  STATE
+ *  ============================ */
+let headers = [];
+let rows = [];
+let cols = {};
+let fields = [];
+let groupMap = new Map(); // groupKey -> { key, brand, model, sampleRow, rows[] }
+
+let selectedGroupKeys = [];
+let selectedGroups = []; // [{key, ...}]
+let activeTrimMap = {};  // groupKey -> row.__id
+
+let multMap = {};
+let colState = [];       // [{key:groupKey, visible:true}]
+let lastTotals = {};
+let activeLens = "custom";
+
+const LENSES = {
+  custom: {},
+  value: { keywords: { price: -0.001, msrp: -0.001, range: 0.7, power: 0.08, hp: 0.08, kw: 0.08 } },
+  performance: { keywords: { power: 0.15, hp: 0.15, kw: 0.15, torque: 0.08, "0-100": -0.8, acceleration: -0.8, weight: -0.02 } },
+  efficiency: { keywords: { range: 0.9, consumption: -0.7, co2: -1, efficiency: 0.6, price: -0.0004 } },
+  practicality: { keywords: { luggage: 0.15, trunk: 0.15, cargo: 0.15, seats: 0.2, width: 0.07, height: 0.07, wheelbase: 0.1 } },
+};
+
+/** ============================
+ *  UTILS
+ *  ============================ */
+function normKey(s){ return String(s||"").toLowerCase().replace(/[^a-z0-9]+/g,""); }
+function resolveColumn(headerList, candidates){
+  const map = new Map(headerList.map(h => [normKey(h), h]));
+  for(const c of candidates){ const k = normKey(c); if(map.has(k)) return map.get(k); }
+  for(const c of candidates){
+    const ck = normKey(c);
+    for(const h of headerList){ if(normKey(h).includes(ck)) return h; }
+  }
+  return null;
+}
+function detectColumns(headerList){
+  return {
+    brand: resolveColumn(headerList, ["brand","make","manufacturer","oem","marque","märke"]),
+    model: resolveColumn(headerList, ["model","carline","vehicle","name","modelname"]),
+    variant: resolveColumn(headerList, ["variant","trim","version","derivative","grade"]),
+    year: resolveColumn(headerList, ["year","modelyear","my"]),
+    segment: resolveColumn(headerList, ["segment","bodysegment","segmentgroup","bodystyle","body"]),
+    vehicleClass: resolveColumn(headerList, ["vehicleclass","pcv_lcv","pcv/lcv","class","vehicletype"]),
+    fuel: resolveColumn(headerList, ["fuel","fueltype","powertrain","energy","drivetrain"])
+  };
+}
+function normBrand(s){
+  return String(s||"").trim().toUpperCase()
+    .replace(/&/g,"AND").replace(/\s+/g,"-").replace(/[^A-Z0-9-]/g,"");
+}
+function normModel(s){
+  return String(s||"").trim().toUpperCase()
+    .replace(/&/g,"AND").replace(/[\/\\]+/g,"_").replace(/\s+/g,"_").replace(/[^A-Z0-9_-]/g,"");
+}
+function groupTitle(g){ return `${g.brand||""} ${g.model||""}`.trim() || g.key; }
+function groupSubline(g){
+  const r = g.sampleRow || {};
+  const seg = cols.segment ? r[cols.segment] : "";
+  const vc  = cols.vehicleClass ? r[cols.vehicleClass] : "";
+  const fuel= cols.fuel ? r[cols.fuel] : "";
+  return [seg,vc,fuel].filter(Boolean).join(" • ");
+}
+function imageUrlForGroup(g){
+  if(missingImage.has(g.key)) return FALLBACK_ICON;
+  const brand = normBrand(g.brand);
+  const model = normModel(g.model);
+  if(!brand || !model) return FALLBACK_ICON;
+  return `./images/${brand}_${model}.png`;
+}
+function trimLabel(r){
+  const parts = [];
+  if(cols.year && r[cols.year]) parts.push(String(r[cols.year]));
+  if(cols.variant && r[cols.variant]) parts.push(String(r[cols.variant]));
+  // If you have other trim-ish columns, you can add here
+  const label = parts.join(" — ").trim();
+  return label || `Row ${r.__idx+1}`;
+}
+
+/** numeric parsing */
+function parseNumeric(v){
+  if(v == null) return null;
+  if(typeof v === "number" && Number.isFinite(v)) return v;
+  const s0 = String(v).trim();
+  if(!s0 || s0 === "—") return null;
+
+  const rm = s0.match(/(-?\d+(?:[.,]\d+)?)\s*[–-]\s*(-?\d+(?:[.,]\d+)?)/);
+  if(rm){
+    const a = parseFloat(rm[1].replace(",", "."));
+    const b = parseFloat(rm[2].replace(",", "."));
+    if(Number.isFinite(a) && Number.isFinite(b)) return (a+b)/2;
+  }
+
+  let s = s0.replace(/[^\d.,\-]/g,"");
+  if(!s) return null;
+
+  const lastDot = s.lastIndexOf(".");
+  const lastComma = s.lastIndexOf(",");
+  if(lastDot !== -1 && lastComma !== -1){
+    if(lastDot > lastComma) s = s.replace(/,/g,"");
+    else s = s.replace(/\./g,"").replace(/,/g,".");
+  }else if(lastComma !== -1 && lastDot === -1){
+    s = s.replace(/,/g,".");
+  }
+  const num = parseFloat(s);
+  return Number.isFinite(num) ? num : null;
+}
+
+/** localStorage */
+function loadJSON(key, fallback){
+  try{ const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; }
+  catch{ return fallback; }
+}
+function saveJSON(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
+function applyLens(name){
+  activeLens = name;
+  if(name === "custom"){
+    renderLensRow();
+    render();
+    return;
+  }
+  const lens = LENSES[name];
+  if(!lens || !lens.keywords) return;
+  const next = {};
+  for(const h of headers){
+    const hk = normKey(h);
+    for(const [kw, w] of Object.entries(lens.keywords)){
+      if(hk.includes(normKey(kw))) next[h] = w;
+    }
+  }
+  multMap = { ...multMap, ...next };
+  saveJSON(MULT_KEY, multMap);
+  renderLensRow();
+  render();
+}
+function renderLensRow(){
+  const row = document.getElementById("lensRow");
+  row.innerHTML = "";
+  const defs = [
+    ["custom", "Custom"],
+    ["value", "Value"],
+    ["performance", "Performance"],
+    ["efficiency", "Efficiency"],
+    ["practicality", "Practicality"],
+  ];
+  for(const [id, label] of defs){
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "pill" + (activeLens === id ? " active" : "");
+    b.textContent = label;
+    b.onclick = () => applyLens(id);
+    row.appendChild(b);
+  }
+}
+
+/** multipliers */
+function getMultiplier(field){
+  const m = multMap[field];
+  return (m == null || m === "") ? 0 : Number(m);
+}
+function setMultiplier(field, val){
+  multMap[field] = val;
+  saveJSON(MULT_KEY, multMap);
+}
+
+/** visible groups based on colState */
+function saveColState(){ saveJSON(COL_KEY, colState); }
+function visibleGroups(){
+  return colState.filter(c=>c.visible).map(c=>selectedGroups.find(g=>g.key===c.key)).filter(Boolean);
+}
+
+/** active trim row */
+function getActiveRowForGroup(g){
+  const targetId = activeTrimMap[g.key];
+  if(targetId){
+    const hit = g.rows.find(r => r.__id === targetId);
+    if(hit) return hit;
+  }
+  // default: choose max year if possible, else first
+  if(cols.year){
+    const withYear = g.rows
+      .map(r => ({ r, y: parseInt(String(r[cols.year]||"").replace(/[^\d]/g,""), 10) }))
+      .filter(x => Number.isFinite(x.y));
+    if(withYear.length){
+      withYear.sort((a,b)=>b.y-a.y);
+      return withYear[0].r;
+    }
+  }
+  return g.rows[0] || g.sampleRow;
+}
+
+/** ============================
+ *  LOAD CSV + BUILD GROUPS
+ *  ============================ */
+async function loadCSV(){
+  const res = await fetch(CSV_PATH, { cache:"no-store" });
+  if(!res.ok) throw new Error(`Failed to load ${CSV_PATH} (${res.status})`);
+  const text = await res.text();
+  const parsed = Papa.parse(text, { header:true, skipEmptyLines:true });
+  headers = parsed.meta?.fields || Object.keys(parsed.data?.[0] || {});
+  cols = detectColumns(headers);
+
+  const idCol = resolveColumn(headers, ["id","vehicle_id","product_id","uuid","key"]);
+  rows = (parsed.data || []).map((r, idx) => {
+    const b = cols.brand ? r[cols.brand] : "";
+    const m = cols.model ? r[cols.model] : "";
+    const stable = (idCol && r[idCol]) ? String(r[idCol]) : `${normBrand(b)}_${normModel(m)}_${idx}`;
+    return { ...r, __id: stable, __idx: idx };
+  });
+
+  // fields = all csv columns except empties
+  fields = headers.filter(h => h && !String(h).startsWith("__"));
+
+  // build group map
+  groupMap = new Map();
+  for(const r of rows){
+    const brand = cols.brand ? (r[cols.brand] || "") : "";
+    const model = cols.model ? (r[cols.model] || "") : "";
+    const key = `${normBrand(brand)}_${normModel(model)}`.trim();
+    if(!key || key === "_") continue;
+
+    if(!groupMap.has(key)){
+      groupMap.set(key, { key, brand, model, sampleRow:r, rows:[] });
+    }
+    groupMap.get(key).rows.push(r);
+  }
+}
+
+/** ============================
+ *  LOAD SELECTION + STATE
+ *  ============================ */
+function loadSelection(){
+  selectedGroupKeys = loadJSON(SELECTION_KEY, []);
+  if(!Array.isArray(selectedGroupKeys) || !selectedGroupKeys.length){
+    // fallback: first 3 groups
+    selectedGroupKeys = Array.from(groupMap.keys()).slice(0,3);
+  }
+
+  selectedGroups = selectedGroupKeys.map(k => groupMap.get(k)).filter(Boolean);
+
+  // trim map
+  activeTrimMap = loadJSON(TRIM_KEY, {});
+  if(typeof activeTrimMap !== "object" || !activeTrimMap) activeTrimMap = {};
+
+  // multipliers + column state
+  multMap = loadJSON(MULT_KEY, {});
+  const defaultCols = selectedGroups.map(g => ({ key:g.key, visible:true }));
+  colState = loadJSON(COL_KEY, defaultCols);
+  for(const g of selectedGroups){
+    if(!colState.find(c => c.key === g.key)) colState.push({ key:g.key, visible:true });
+  }
+}
+
+/** ============================
+ *  RENDER UI
+ *  ============================ */
+const thead = document.getElementById("thead");
+const tbody = document.getElementById("tbody");
+const tfoot = document.getElementById("tfoot");
+const topSummary = document.getElementById("topSummary");
+const filterInput = document.getElementById("filterInput");
+const colList = document.getElementById("colList");
+
+function renderColumnPanel(){
+  colList.innerHTML = "";
+  for(const c of colState){
+    const g = selectedGroups.find(x => x.key === c.key);
+    if(!g) continue;
+
+    const wrap = document.createElement("label");
+    wrap.className = "col-item";
+    wrap.innerHTML = `
+      <input type="checkbox" data-key="${escapeAttr(c.key)}" ${c.visible ? "checked":""}/>
+      <span>${escapeHtml(groupTitle(g))}</span>
+    `;
+    wrap.querySelector("input").addEventListener("change", e => {
+      const key = e.target.dataset.key;
+      const item = colState.find(x => x.key === key);
+      item.visible = e.target.checked;
+      saveColState();
+      render();
+    });
+    colList.appendChild(wrap);
+  }
+}
+
+function render(){
+  renderColumnPanel();
+
+  const visGroups = visibleGroups();
+  const filter = filterInput.value.trim().toLowerCase();
+
+  // build header
+  thead.innerHTML = `
+    <tr>
+      <th style="width:360px;">Field (CSV column)</th>
+      <th style="width:120px;" class="center">Multiplier</th>
+      ${visGroups.map(g => {
+        const img = imageUrlForGroup(g);
+        const name = groupTitle(g);
+        const sub = groupSubline(g);
+        const activeRow = getActiveRowForGroup(g);
+
+        // options
+        const opts = g.rows.map(r => {
+          const label = trimLabel(r);
+          const selected = (activeRow && r.__id === activeRow.__id) ? "selected" : "";
+          return `<option value="${escapeAttr(r.__id)}" ${selected}>${escapeHtml(label)}</option>`;
+        }).join("");
+
+        return `
+          <th class="model-col" draggable="true" data-key="${escapeAttr(g.key)}" style="min-width:260px;">
+            <div class="headModel">
+              <div class="headTop">
+                <img src="${img}" onerror="this.src='${FALLBACK_ICON}'" alt="${escapeAttr(name)}"/>
+                <div class="t">
+                  <div class="name">${escapeHtml(name)}</div>
+                  <div class="sub">${escapeHtml(sub || "")}</div>
+                </div>
+              </div>
+              <select class="trimSel" data-group="${escapeAttr(g.key)}" title="Select trim/spec">
+                ${opts}
+              </select>
+            </div>
+          </th>
+        `;
+      }).join("")}
+    </tr>
+  `;
+
+  attachHeaderDnD();
+
+  // trim change handlers
+  document.querySelectorAll("select.trimSel").forEach(sel => {
+    sel.addEventListener("change", e => {
+      const groupKey = e.target.dataset.group;
+      const rowId = e.target.value;
+      activeTrimMap[groupKey] = rowId;
+      saveJSON(TRIM_KEY, activeTrimMap);
+      render();
+    });
+  });
+
+  // body
+  tbody.innerHTML = "";
+  const totals = Object.fromEntries(visGroups.map(g => [g.key, 0]));
+
+  for(const field of fields){
+    if(filter && !String(field).toLowerCase().includes(filter)) continue;
+
+    const mult = getMultiplier(field);
+
+    const cells = visGroups.map(g => {
+      const r = getActiveRowForGroup(g) || {};
+      const raw = r[field];
+      const num = parseNumeric(raw);
+      const contrib = (num != null) ? num * mult : null;
+      if(contrib != null) totals[g.key] += contrib;
+
+      const displayVal = (raw == null || String(raw).trim()==="") ? "—" : String(raw);
+      const displayContrib = (contrib == null) ? "—" : contrib.toFixed(3);
+      const cls = (contrib == null) ? "" : (contrib < 0 ? "neg" : "contrib");
+
+      return `
+        <td class="num">
+          <div>${escapeHtml(displayVal)}</div>
+          <div class="${cls}" style="font-size:11px;">${escapeHtml(displayContrib)}</div>
+        </td>
+      `;
+    }).join("");
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><strong>${escapeHtml(field)}</strong></td>
+      <td class="center">
+        <input class="mult" type="number" step="0.001" min="-1000" max="1000"
+               data-field="${escapeAttr(field)}" value="${mult}">
+      </td>
+      ${cells}
+    `;
+    tbody.appendChild(tr);
+  }
+
+  // totals
+  tfoot.innerHTML = `
+    <tr class="total-row">
+      <td colspan="2">Total weighted value</td>
+      ${visGroups.map(g => `<td class="num">${(totals[g.key]||0).toFixed(3)}</td>`).join("")}
+    </tr>
+  `;
+
+  // summary
+  topSummary.innerHTML = visGroups.map(g => `
+    <div class="card">
+      <div class="label">${escapeHtml(groupTitle(g))}</div>
+      <div class="value">${(totals[g.key]||0).toFixed(3)}</div>
+      <div class="note">${escapeHtml(trimLabel(getActiveRowForGroup(g)))} </div>
+      <div class="meta">Lens: ${escapeHtml(activeLens)}</div>
+    </div>
+  `).join("");
+
+  lastTotals = totals;
+
+  // multiplier handlers
+  document.querySelectorAll("input.mult").forEach(inp => {
+    inp.addEventListener("input", e => {
+      const field = e.target.dataset.field;
+      let v = Number(e.target.value);
+      if(!Number.isFinite(v)) v = 0;
+      if(v > 1000) v = 1000;
+      if(v < -1000) v = -1000;
+      e.target.value = v;
+      setMultiplier(field, v);
+      render();
+    });
+  });
+}
+
+/** drag reorder model columns */
+function attachHeaderDnD(){
+  const headers = [...thead.querySelectorAll("th.model-col")];
+  let dragKey = null;
+
+  headers.forEach(h => {
+    h.addEventListener("dragstart", e => {
+      dragKey = h.dataset.key;
+      h.classList.add("dragging");
+      e.dataTransfer.effectAllowed = "move";
+    });
+    h.addEventListener("dragend", () => {
+      h.classList.remove("dragging");
+      dragKey = null;
+    });
+    h.addEventListener("dragover", e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+    });
+    h.addEventListener("drop", e => {
+      e.preventDefault();
+      const targetKey = h.dataset.key;
+      if(!dragKey || dragKey === targetKey) return;
+
+      const fromIdx = colState.findIndex(c => c.key === dragKey);
+      const toIdx   = colState.findIndex(c => c.key === targetKey);
+      const [moved] = colState.splice(fromIdx, 1);
+      colState.splice(toIdx, 0, moved);
+      saveColState();
+      render();
+    });
+  });
+}
+
+/** ============================
+ *  EXCEL EXPORT (AS DISPLAYED)
+ *  ============================ */
+document.getElementById("exportBtn").onclick = () => {
+  const visGroups = visibleGroups();
+  const filter = filterInput.value.trim().toLowerCase();
+
+  const headerRow = ["Field", "Multiplier", ...visGroups.map(g => groupTitle(g))];
+  const aoa = [headerRow];
+
+  for(const field of fields){
+    if(filter && !String(field).toLowerCase().includes(filter)) continue;
+
+    const mult = getMultiplier(field);
+    const row = [field, mult];
+
+    for(const g of visGroups){
+      const r = getActiveRowForGroup(g) || {};
+      const raw = r[field];
+      const num = parseNumeric(raw);
+      const contrib = (num != null) ? num * mult : null;
+
+      const displayVal = (raw == null || String(raw).trim()==="") ? "—" : String(raw);
+      const displayContrib = (contrib == null) ? "—" : contrib.toFixed(3);
+
+      row.push(`${displayVal}\n${displayContrib}`);
+    }
+    aoa.push(row);
+  }
+
+  // totals row
+  aoa.push(["Total weighted value", "", ...visGroups.map(g => (lastTotals[g.key] ?? 0).toFixed(3))]);
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws["!cols"] = [{wch:34},{wch:12}, ...visGroups.map(()=>({wch:28}))];
+  XLSX.utils.book_append_sheet(wb, ws, "Comparison");
+  XLSX.writeFile(wb, `egaux_compare_${new Date().toISOString().slice(0,10)}.xlsx`);
+};
+
+/** ============================
+ *  TOOLBAR BUTTONS
+ *  ============================ */
+document.getElementById("resetBtn").onclick = () => {
+  multMap = {};
+  saveJSON(MULT_KEY, multMap);
+  render();
+};
+
+document.getElementById("sampleBtn").onclick = () => {
+  const sample = {};
+  for(const h of headers){
+    const k = normKey(h);
+    if(k.includes("price") || k.includes("msrp")) sample[h] = -0.0001;
+    if(k.includes("range")) sample[h] = +1;
+    if(k.includes("power") || k.includes("kw") || k.includes("hp")) sample[h] = +0.1;
+    if(k.includes("weight")) sample[h] = -0.01;
+    if(k.includes("co2")) sample[h] = -1;
+  }
+  multMap = { ...multMap, ...sample };
+  saveJSON(MULT_KEY, multMap);
+  activeLens = "custom";
+  renderLensRow();
+  render();
+};
+
+filterInput.addEventListener("input", render);
+
+/** ============================
+ *  SAFETY: escapes
+ *  ============================ */
+function escapeHtml(s){
+  return String(s ?? "")
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;")
+    .replace(/'/g,"&#039;");
+}
+function escapeAttr(s){
+  return String(s ?? "").replace(/"/g,"&quot;");
+}
+
+/** ============================
+ *  INIT
+ *  ============================ */
+(async function init(){
+  try{
+    await loadCSV();
+    loadSelection();
+    renderLensRow();
+    render();
+  }catch(err){
+    console.error(err);
+    alert("Could not load Product_data_filled_updated.csv. Ensure it is deployed next to compare.html.");
+  }
+})();
+</script>
+</body>
+</html>

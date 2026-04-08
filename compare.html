@@ -257,7 +257,7 @@
 /** ============================
  *  CONFIG
  *  ============================ */
-const CSV_PATH = "Product_data_filled_updated.csv";
+const CSV_CANDIDATES = ["output/porsche-se_2026-04-06.csv", "output/latest.csv", "Product_data_filled_updated.csv"];
 const SELECTION_KEY = "egaux_selected_groupkeys_v1";
 const META_KEY = "egaux_selection_meta_v1";
 const MULT_KEY = "egaux_field_multipliers_v1";
@@ -465,10 +465,27 @@ function getActiveRowForGroup(g){
  *  LOAD CSV + BUILD GROUPS
  *  ============================ */
 async function loadCSV(){
-  const res = await fetch(CSV_PATH, { cache:"no-store" });
-  if(!res.ok) throw new Error(`Failed to load ${CSV_PATH} (${res.status})`);
-  const text = await res.text();
+  let text = "";
+  let loadedFrom = "";
+  let lastErr = "";
+  for (const candidate of CSV_CANDIDATES){
+    try {
+      const res = await fetch(candidate, { cache:"no-store" });
+      if(!res.ok){
+        lastErr = `${candidate} (${res.status})`;
+        continue;
+      }
+      text = await res.text();
+      loadedFrom = candidate;
+      break;
+    } catch (e){
+      lastErr = `${candidate} (${e instanceof Error ? e.message : String(e)})`;
+    }
+  }
+  if(!text) throw new Error(`Failed to load CSV from candidates: ${CSV_CANDIDATES.join(", ")}. Last error: ${lastErr}`);
   const parsed = Papa.parse(text, { header:true, skipEmptyLines:true });
+  const sourceNote = document.getElementById("sourceNote");
+  if (sourceNote) sourceNote.textContent = `Source: ${loadedFrom}`;
   headers = parsed.meta?.fields || Object.keys(parsed.data?.[0] || {});
   cols = detectColumns(headers);
 
@@ -816,7 +833,7 @@ function escapeAttr(s){
     render();
   }catch(err){
     console.error(err);
-    alert("Could not load Product_data_filled_updated.csv. Ensure it is deployed next to compare.html.");
+    alert(`Could not load CSV. Tried: ${CSV_CANDIDATES.join(", ")}. Ensure one exists in the deployed site.`);
   }
 })();
 </script>

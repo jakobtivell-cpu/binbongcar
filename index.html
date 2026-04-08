@@ -516,7 +516,7 @@
 /** ============================
  *  CONFIG
  *  ============================ */
-const CSV_PATH = "Product_data_filled_updated.csv";
+const CSV_CANDIDATES = ["output/porsche-se_2026-04-06.csv", "output/latest.csv", "Product_data_filled_updated.csv"];
 const COMPARE_PAGE = "compare.html";
 const SLOT_COUNT = 10;
 
@@ -663,9 +663,24 @@ function toggleSelect(key){
  *  CSV LOADER
  *  ============================ */
 async function loadCSV(){
-  const res = await fetch(CSV_PATH, { cache:"no-store" });
-  if(!res.ok) throw new Error(`Failed to load ${CSV_PATH} (${res.status})`);
-  const text = await res.text();
+  let text = "";
+  let loadedFrom = "";
+  let lastErr = "";
+  for (const candidate of CSV_CANDIDATES){
+    try {
+      const res = await fetch(candidate, { cache:"no-store" });
+      if(!res.ok){
+        lastErr = `${candidate} (${res.status})`;
+        continue;
+      }
+      text = await res.text();
+      loadedFrom = candidate;
+      break;
+    } catch (e){
+      lastErr = `${candidate} (${e instanceof Error ? e.message : String(e)})`;
+    }
+  }
+  if(!text) throw new Error(`Failed to load CSV from candidates: ${CSV_CANDIDATES.join(", ")}. Last error: ${lastErr}`);
   const parsed = Papa.parse(text, { header:true, skipEmptyLines:true });
   headers = parsed.meta?.fields || Object.keys(parsed.data?.[0] || {});
   rawRows = parsed.data || [];
@@ -698,7 +713,7 @@ async function loadCSV(){
   }
   groups = Array.from(groupMap.values()).sort((a,b)=>groupTitle(a).localeCompare(groupTitle(b)));
 
-  document.getElementById("dataBadge").textContent = CSV_PATH;
+  document.getElementById("dataBadge").textContent = loadedFrom;
 }
 
 /** ============================
@@ -1060,7 +1075,7 @@ function renderAll(){
   }catch(err){
     console.error(err);
     document.getElementById("dataBadge").textContent = "CSV missing";
-    alert("Could not load Product_data_filled_updated.csv. Ensure it is deployed next to index.html.");
+    alert(`Could not load CSV. Tried: ${CSV_CANDIDATES.join(", ")}. Ensure one exists in the deployed site.`);
   }
 })();
 </script>

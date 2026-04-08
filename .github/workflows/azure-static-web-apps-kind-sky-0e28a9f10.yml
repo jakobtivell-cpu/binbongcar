@@ -30,7 +30,8 @@ jobs:
           # For more information regarding Static Web App workflow configurations, please visit: https://aka.ms/swaworkflowconfig
           app_location: "/" # Deploy repository root (index.html + compare.html)
           api_location: "" # Api source code path - optional
-          output_location: "" # No separate build output directory
+          output_location: "/" # Static app lives at repository root
+          skip_app_build: true # Do not run Oryx; publish static files as-is
           ###### End of Repository/Build Configurations ######
 
   close_pull_request_job:
